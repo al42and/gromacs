@@ -191,7 +191,7 @@ int jacobi(gmx::ArrayRef<gmx::DVec> a, gmx::ArrayRef<double> eigenvalues, gmx::A
     return jacobi(a, DIM, eigenvalues.data(), eigenvectors);
 }
 
-int m_inv_gen(real* m, int n, real* minv)
+int m_inv_gen(const real* m, int n, real* minv)
 {
     double **md, **v, *eig, tol, s;
     int      nzero, i, j, k, nrot;
