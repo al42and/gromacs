@@ -31,10 +31,16 @@
  * To help us fund GROMACS development, we humbly ask that you cite
  * the research papers on the package. Check out https://www.gromacs.org.
  */
+/*! \libinternal
+ * \file
+ * \brief Defines wrapper functions for higher-level matrix functions
+ *
+ * \ingroup module_math
+ */
 /* This file is completely threadsafe - keep it that way! */
 #include "gmxpre.h"
 
-#include "gromacs/linearalgebra/nrjac.h"
+#include "gromacs/math/nrjac.h"
 
 #include <cmath>
 

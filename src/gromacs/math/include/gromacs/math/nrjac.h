@@ -31,8 +31,14 @@
  * To help us fund GROMACS development, we humbly ask that you cite
  * the research papers on the package. Check out https://www.gromacs.org.
  */
-#ifndef GMX_LINEARALGEBRA_NRJAC_H
-#define GMX_LINEARALGEBRA_NRJAC_H
+/*! \libinternal
+ * \file
+ * \brief Declares wrapper functions for higher-level matrix functions
+ *
+ * \ingroup module_math
+ */
+#ifndef GMX_MATH_NRJAC_H
+#define GMX_MATH_NRJAC_H
 
 #include "gromacs/math/vectypes.h"
 #include "gromacs/utility/arrayref.h"
