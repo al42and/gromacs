@@ -64,7 +64,7 @@ void jacobi(double** a, int numDimensions, double* eigenvalues, double** eigenve
  */
 int jacobi(gmx::ArrayRef<gmx::DVec> a, gmx::ArrayRef<double> eigenvalues, gmx::ArrayRef<gmx::DVec> eigenvectors);
 
-int m_inv_gen(real* m, int n, real* minv);
+int m_inv_gen(const real* m, int n, real* minv);
 /* Produces minv, a generalized inverse of m, both stored as linear arrays.
  * Inversion is done via diagonalization,
  * eigenvalues smaller than 1e-6 times the average diagonal element
