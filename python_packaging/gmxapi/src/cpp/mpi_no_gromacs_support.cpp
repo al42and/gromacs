@@ -1,7 +1,7 @@
 /*
  * This file is part of the GROMACS molecular simulation package.
  *
- * Copyright 1991- The GROMACS Authors
+ * Copyright 2022- The GROMACS Authors
  * and the project initiators Erik Lindahl, Berk Hess and David van der Spoel.
  * Consult the AUTHORS/COPYING files and https://www.gromacs.org for details.
  *
@@ -31,36 +31,46 @@
  * To help us fund GROMACS development, we humbly ask that you cite
  * the research papers on the package. Check out https://www.gromacs.org.
  */
-/*! \libinternal \file
- * \brief
- * Provides OS-specific directory-name separator
+/*! \file
+ * \brief Handler for mpi4py without MPI-enabled GROMACS.
  *
- * \inlibraryapi
- * \ingroup module_utility
+ * \ingroup module_python
+ * \author M. Eric Irrgang <ericirrgang@gmail.com>
  */
-#ifndef GMX_UTILITY_DIR_SEPARATOR_H
-#define GMX_UTILITY_DIR_SEPARATOR_H
 
-#include "config.h"
+#include <mpi.h>
 
-/*! \def DIR_SEPARATOR
- * \brief
- * Directory separator on this OS.
- *
- * Native Windows uses backslash path separators (but accepts also slashes).
- * Cygwin and most other systems use slash.
- *
- * \todo Get rid of this (Issue #950). It is not necessary for
- * constructing paths on the systems that it currently supports, and
- * is not reliable in parsing input paths either, since Windows needs
- * to accept both instead of only DIR_SEPARATOR. At the very least, we
- * should refactor the clients of this header so that they operate
- * upon path objects rather than raw path strings.
- */
-#if GMX_NATIVE_WINDOWS
-#    define DIR_SEPARATOR '\\'
-#else
-#    define DIR_SEPARATOR '/'
-#endif
+#include "pybind11/pybind11.h"
 
-#endif
+#include "gmxapi/context.h"
+#include "gmxapi/mpi/gmxapi_mpi.h"
+
+#include "mpi_bindings.h"
+#include "pycontext.h"
+
+namespace py = pybind11;
+
+namespace gmxpy
+{
+
+gmxapi::Context context_from_py_comm(py::object communicator)
+{
+    MPI_Comm* comm_ptr = get_mpi_comm(communicator);
+
+    int size = 0;
+    MPI_Comm_size(*comm_ptr, &size);
+    if (size != 1)
+    {
+        const auto message = std::string(
+                                     "Installed GROMACS is not MPI-enabled. Cannot accept "
+                                     "communicator of size ")
+                             + std::to_string(size) + ".";
+        throw ResourceError(message);
+    }
+    // Note: By default, GROMACS ignores the provided communicator when GMX_LIB_MPI is FALSE.
+    // Either here or in the library, we _could_ use the provided communicator to help determine
+    // the threading parameters.
+    return gmxapi::createContext(*gmxapi::assignResource(*get_mpi_comm(communicator)));
+}
+
+} // namespace gmxpy

@@ -86,7 +86,7 @@ parsers for tools.
     Instead, inherit from it with the *parents* argument to :py:class:`argparse.ArgumentParser`
 """
 
-parser.add_argument('--cmake', nargs='*', type=str, default=['3.16.3', '3.17.2', '3.18.4', '3.21.2', '3.24.0'],
+parser.add_argument('--cmake', nargs='*', type=str, default=['3.18.4', '3.21.2', '3.24.0'],
                     help='Selection of CMake version to provide to base image. (default: %(default)s)')
 
 compiler_group = parser.add_mutually_exclusive_group()
@@ -168,17 +168,16 @@ def image_name(configuration: argparse.Namespace) -> str:
         if version is not None:
             elements.append(distro + '-' + version)
             break
-    for compiler in ('llvm', 'intel_llvm', 'gcc'):
+    for compiler in ('llvm', 'intel_llvm', 'oneapi', 'gcc'):
         version = getattr(configuration, compiler, None)
         if version is not None:
-            elements.append(compiler + '-' + str(version).split('.')[0])
+            version = str(version).split('.')[0] if compiler != 'oneapi' else str(version)
+            elements.append(compiler + '-' + version)
             break
     for gpusdk in ('cuda', 'hipsycl'):
         version = getattr(configuration, gpusdk, None)
         if version is not None:
             elements.append(gpusdk + '-' + version)
-    if configuration.oneapi is not None:
-        elements.append('oneapi-' + configuration.oneapi)
     if configuration.intel_compute_runtime:
         elements.append('intel-compute-runtime')
     if configuration.rocm is not None:

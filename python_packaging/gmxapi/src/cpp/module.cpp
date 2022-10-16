@@ -35,6 +35,9 @@
 /*! \internal \file
  * \brief Exports Python bindings for gmxapi._gmxapi module.
  *
+ * Defines the entry point for an importable Python extension module
+ * (in accordance with Python C API), using the pybind11 template headers.
+ *
  * \author M. Eric Irrgang <ericirrgang@gmail.com>
  *
  * \ingroup module_python
@@ -48,6 +51,8 @@
 
 #include "gmxapi/status.h"
 #include "gmxapi/version.h"
+
+#include "gmxpy_exceptions.h"
 
 namespace py = pybind11;
 
@@ -79,23 +84,44 @@ PYBIND11_MODULE(_gmxapi, m)
     using namespace gmxpy::detail;
     m.doc() = docstring;
 
+    // Provide a module level dict for internal use to support
+    // API queries for feature level.
+    m.attr("_named_features") = py::dict();
+
     // Register exceptions and catch-all exception translators. We do this early
     // to give more freedom to the other export functions. Note that bindings
     // for C++ symbols should be expressed before those symbols are referenced
     // in other bindings, and that exception translators are tried in reverse
     // order of registration for uncaught C++ exceptions.
-    export_exceptions(m);
+    const auto& baseException = export_exceptions(m);
 
     // Export core bindings
-    m.def("has_feature",
+    m.def("library_has_feature",
           &gmxapi::Version::hasFeature,
           "Check the gmxapi library for a named feature.");
 
     py::class_<::gmxapi::Status> gmx_status(m, "Status", "Holds status for API operations.");
 
     // Get bindings exported by the various components.
-    export_context(m);
+    // Additional exports may be conditionally added within this export functions
+    // based on implementations chosen by CMake logic. (E.g. MPI bindings or features
+    // requiring specific GROMACS versions)
+    export_context(m, baseException);
     export_system(m);
     export_tprfile(m);
+
+    // Module helpers and utilities
+    m.def(
+            "has_feature",
+            [self = m](const std::string& name) {
+                py::gil_scoped_acquire lock;
+                bool feature_found = py::cast<py::dict>(self.attr("_named_features")).contains(name);
+                if (!feature_found)
+                {
+                    feature_found = py::cast<bool>(self.attr("library_has_feature")(name));
+                }
+                return feature_found;
+            },
+            "Check feature *name* first with the bindings package, then the supporting library.");
 
 } // end pybind11 module

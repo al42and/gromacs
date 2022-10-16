@@ -54,14 +54,12 @@ support additional convenience and introspection.
     Consider https://packaging.pypa.io/en/latest/version/ for programmatic
     handling of the version string. For example::
 
+        import pkg_resources
         from packaging.version import parse
         gmxapi_version = pkg_resources.get_distribution('gmxapi').version
         if parse(gmxapi_version).is_prerelease:
             print('The early bird gets the worm.')
 
-.. todo:: Use pkg_resources.get_distribution('gmxapi').version and
-          "development installations" instead of relying on or publicizing
-          a __version__ attribute.
 """
 import warnings
 
@@ -71,10 +69,11 @@ from .exceptions import FeatureNotAvailableError
 _major = 0
 _minor = 4
 _micro = 0
-_suffix = 'a3'
+_suffix = 'b2'
 
-# Reference https://www.python.org/dev/peps/pep-0440/
-# and https://packaging.pypa.io/en/latest/version/
+# Reference https://www.python.org/dev/peps/pep-0440/ and
+# https://packaging.pypa.io/en/latest/version/ for
+# versioning semantics and rules.
 __version__ = '{major}.{minor}.{micro}{suffix}'.format(major=_major,
                                                        minor=_minor,
                                                        micro=_micro,
@@ -111,6 +110,11 @@ _named_features_0[3] = [
     'cli_env_kwarg',
 ]
 
+_named_features_0[4] = [
+    'mpi_comm_integration'
+]
+
+
 def api_is_at_least(major_version, minor_version=0, patch_version=0):
     """Allow client to check whether installed module supports the requested API level.
 
@@ -139,7 +143,7 @@ def api_is_at_least(major_version, minor_version=0, patch_version=0):
         return False
 
 
-def has_feature(name='', enable_exception=False) -> bool:
+def has_feature(name: str, enable_exception=False) -> bool:
     """Query whether a named feature is available in the installed package.
 
     Between updates to the API specification, new features or experimental aspects
@@ -172,6 +176,8 @@ def has_feature(name='', enable_exception=False) -> bool:
         gmxapi.exceptions.FeatureNotAvailableError: If ``enable_exception == True`` and feature is not found.
 
     """
+    import gmxapi._gmxapi as core
+
     # First, issue a warning if the feature name is subject to removal because
     # of the history of the API specification.
     for version in range(_minor):
@@ -188,6 +194,8 @@ def has_feature(name='', enable_exception=False) -> bool:
 
     # Check whether the feature is listed in the API specification amendments.
     if any(name in features for features in _named_features_0):
+        return True
+    elif core.has_feature(name):
         return True
     else:
         if enable_exception:

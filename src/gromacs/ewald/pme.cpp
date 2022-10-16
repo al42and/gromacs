@@ -990,7 +990,8 @@ gmx_pme_t* gmx_pme_init(const t_commrec*     cr,
         {
             GMX_THROW(gmx::NotImplementedError(errorString));
         }
-        pme_gpu_reinit(pme.get(), deviceContext, deviceStream, pmeGpuProgram);
+        const bool useMdGpuGraph = false; // This will be reset later after PP communication
+        pme_gpu_reinit(pme.get(), deviceContext, deviceStream, pmeGpuProgram, useMdGpuGraph);
     }
     else
     {
@@ -1425,7 +1426,7 @@ int gmx_pme_do(struct gmx_pme_t*              pme,
 
         if (computeEnergyAndVirial)
         {
-            /* This should only be called on the master thread
+            /* This should only be called on the main thread
              * and after the threads have synchronized.
              */
             if (grid_index < 2)
@@ -1595,7 +1596,7 @@ int gmx_pme_do(struct gmx_pme_t*              pme,
 
             if (computeEnergyAndVirial)
             {
-                /* This should only be called on the master thread and
+                /* This should only be called on the main thread and
                  * after the threads have synchronized.
                  */
                 get_pme_ener_vir_lj(pme->solve_work, pme->nthread, &output[fep_state]);

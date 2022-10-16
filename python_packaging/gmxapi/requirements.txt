@@ -8,6 +8,7 @@
 # and run time package dependencies (to be checked during installation) are
 # resolved by setuptools from the `install_requires` in `setup.cfg`.
 cmake>=3.16
+importlib_metadata;python_version<"3.8"
 networkx>=2.0
 numpy>1.7
 packaging
@@ -18,7 +19,7 @@ wheel
 # The following packages are not strictly necessary, but allow documentation builds.
 furo
 Pygments>=2.2.0
-Sphinx>=42
+Sphinx>=4
 sphinx-copybutton
 sphinx_inline_tabs
 sphinxcontrib-plantuml>=0.14

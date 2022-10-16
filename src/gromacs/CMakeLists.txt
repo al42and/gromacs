@@ -193,8 +193,12 @@ if (TARGET Heffte::Heffte)
     target_link_libraries(libgromacs PRIVATE Heffte::Heffte)
 endif()
 
-if (GMX_SYCL_HIPSYCL AND GMX_HIPSYCL_HAVE_HIP_TARGET)
-    target_link_libraries(libgromacs PUBLIC roc::rocfft)
+if (GMX_SYCL_HIPSYCL)
+    if(GMX_GPU_FFT_VKFFT)
+        target_link_libraries(libgromacs PRIVATE VkFFT)
+    elseif(GMX_GPU_FFT_ROCFFT)
+        target_link_libraries(libgromacs PUBLIC roc::rocfft)
+    endif()
 endif()
 
 target_link_libraries(libgromacs PRIVATE $<BUILD_INTERFACE:common>)
@@ -435,13 +439,6 @@ endif()
 if (GMX_CLANG_TIDY)
    set_target_properties(libgromacs PROPERTIES CXX_CLANG_TIDY
        "${CLANG_TIDY_EXE};-warnings-as-errors=*")
-endif()
-
-# clang-3.6 warns about a number of issues that are not reported by more modern compilers
-# and we know they are not real issues. So we only check that it can compile without error
-# but ignore all warnings.
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND CMAKE_CXX_COMPILER_VERSION MATCHES "^3\.6")
-    target_compile_options(libgromacs PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-w>)
 endif()
 
 # TODO: Stop installing libgromacs. Possibly allow installation during deprecation period with GMX_INSTALL_LEGACY_API.

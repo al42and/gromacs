@@ -1,7 +1,7 @@
 /*
  * This file is part of the GROMACS molecular simulation package.
  *
- * Copyright 1991- The GROMACS Authors
+ * Copyright 2022- The GROMACS Authors
  * and the project initiators Erik Lindahl, Berk Hess and David van der Spoel.
  * Consult the AUTHORS/COPYING files and https://www.gromacs.org for details.
  *
@@ -31,40 +31,58 @@
  * To help us fund GROMACS development, we humbly ask that you cite
  * the research papers on the package. Check out https://www.gromacs.org.
  */
-#ifndef GMX_LINEARALGEBRA_NRJAC_H
-#define GMX_LINEARALGEBRA_NRJAC_H
-
-#include "gromacs/math/vectypes.h"
-#include "gromacs/utility/arrayref.h"
-#include "gromacs/utility/real.h"
-
-/* Diagonalizes a symmetric matrix
+/*! \file
+ * \brief Create a PyContext for gmxapi >= 0.2.0
  *
- * \param[in,out] a           Input matrix a[0..n-1][0..n-1] must be symmetric, gets modified
- * \param[in]  numDimensions  Number of rows and columns
- * \param[out] eigenvalues    eigenvalues[0]..eigenvalues[n-1] are the eigenvalues of a
- * \param[out] eigenvectors   v[0..n-1][0..n-1] the eigenvectors: v[i][j] is component i of vector j
- * \param[out] numRotations   The number of jacobi rotations, can be nullptr
- */
-void jacobi(double** a, int numDimensions, double* eigenvalues, double** eigenvectors, int* numRotations);
-
-/* Like jacobi above, but specialized for n=3
  *
- * \param[in,out] a  The symmetric matrix to diagonalize, size 3, note that the contents gets modified
- * \param[out] eigenvalues  The eigenvalues, size 3
- * \param[out] eigenvectors The eigenvectors, size 3
-
- * Returns the number of jacobi rotations.
- */
-int jacobi(gmx::ArrayRef<gmx::DVec> a, gmx::ArrayRef<double> eigenvalues, gmx::ArrayRef<gmx::DVec> eigenvectors);
-
-int m_inv_gen(real* m, int n, real* minv);
-/* Produces minv, a generalized inverse of m, both stored as linear arrays.
- * Inversion is done via diagonalization,
- * eigenvalues smaller than 1e-6 times the average diagonal element
- * are assumed to be zero.
- * For zero eigenvalues 1/eigenvalue is set to zero for the inverse matrix.
- * Returns the number of zero eigenvalues.
+ * \author M. Eric Irrgang <ericirrgang@gmail.com>
+ *
+ * \ingroup module_python
  */
 
-#endif
+
+#include "gmxpy_exceptions.h"
+#include "mpi_bindings.h"
+#include "pycontext.h"
+
+namespace py = pybind11;
+
+namespace gmxpy
+{
+
+PyContext create_context()
+{
+    auto context     = gmxapi::createContext();
+    auto context_ptr = std::make_shared<gmxapi::Context>(std::move(context));
+    return PyContext(std::move(context_ptr));
+}
+
+PyContext create_context(py::object communicator)
+{
+    auto context     = context_from_py_comm(communicator);
+    auto context_ptr = std::make_shared<gmxapi::Context>(std::move(context));
+    return PyContext(std::move(context_ptr));
+}
+
+namespace detail
+{
+
+void export_create_context(pybind11::module& m, const pybind11::exception<Exception>& exception)
+{
+    py::dict features          = m.attr("_named_features");
+    features["create_context"] = 1;
+
+    export_mpi_bindings(m, exception);
+
+    m.def(
+            "create_context",
+            []() { return create_context(); },
+            "Initialize a new API Context to manage resources and software environment.");
+    m.def(
+            "create_context",
+            [](const py::object& resource) { return create_context(resource); },
+            "Initialize a new API Context to manage resources and software environment.");
+}
+} // end namespace detail
+
+} // namespace gmxpy
