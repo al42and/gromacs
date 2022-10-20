@@ -1,3 +1,4 @@
+#
 # This file is part of the GROMACS molecular simulation package.
 #
 # Copyright 2022- The GROMACS Authors
@@ -74,3 +75,4 @@ if ((NOT result-build EQUAL 0) OR (NOT result-build-test EQUAL 0))
 endif()
 
 execute_process(COMMAND ccache -s)
+
