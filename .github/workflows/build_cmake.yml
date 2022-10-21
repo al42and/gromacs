@@ -27,15 +27,15 @@ jobs:
           }
         - {
             name: "macOS Latest Clang", artifact: "macOS.7z",
-            os: macos-latest,
+            os: macos-12,
             cc: "clang", cxx: "clang++",
             gpu_var: "Off",
             openmp_var: "Off"
           }
         - {
             name: "macOS Latest gcc with OpenCL", artifact: "macOS-gcc-OpenCL.7z",
-            os: macos-latest,
-            cc: "gcc-10", cxx: "g++-10",
+            os: macos-12,
+            cc: "gcc-11", cxx: "g++-11",
             gpu_var: "OpenCL",
             openmp_var: "On"
 
