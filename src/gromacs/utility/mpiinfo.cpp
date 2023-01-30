@@ -38,6 +38,8 @@
 
 #include <cstdlib>
 
+#include <regex>
+
 // need to include gmxapi.h here as mpi.h needs to be included before mpi-ext.h
 #include "gromacs/utility/gmxmpi.h"
 
@@ -88,6 +90,41 @@ GpuAwareMpiStatus checkMpiHipAwareSupport()
     return status;
 }
 
+namespace
+{
+
+//! Return whether the MPI library (if any) is a GPU-aware version from Intel
+bool isGpuAwareIntelMpiLibrary()
+{
+    std::string description = mpiLibraryDescription();
+    std::regex intelMpiRegex("^Intel(R) MPI Library ([0-9][0-9][0-9][0-9]).([0-9]+)", std::regex::extended);
+    auto matchesBegin = std::sregex_iterator(description.begin(), description.end(), intelMpiRegex);
+    auto matchesEnd   = std::sregex_iterator();
+    if (std::distance(matchesBegin, matchesEnd) >= 2)
+    {
+        int majorVersion = std::stoi(matchesBegin->str());
+        if (majorVersion < 2018)
+        {
+            return false;
+        }
+        else if (majorVersion == 2018)
+        {
+            matchesBegin++;
+            int minorVersion = std::stoi(matchesBegin->str());
+            return minorVersion >= 8;
+        }
+        else
+        {
+            return true;
+        }
+    }
+    else
+    {
+        return false;
+    }
+}
+
+} // namespace
 
 GpuAwareMpiStatus checkMpiZEAwareSupport()
 {
@@ -95,7 +132,8 @@ GpuAwareMpiStatus checkMpiZEAwareSupport()
     GpuAwareMpiStatus status = (MPIX_Query_ze_support() == 1) ? GpuAwareMpiStatus::Supported
                                                               : GpuAwareMpiStatus::NotSupported;
 #else
-    GpuAwareMpiStatus status = GpuAwareMpiStatus::NotKnown;
+    GpuAwareMpiStatus status = isGpuAwareIntelMpiLibrary() ? GpuAwareMpiStatus::Supported
+                                                           : GpuAwareMpiStatus::NotKnown;
 #endif
 
     if (status != GpuAwareMpiStatus::Supported && getenv("GMX_FORCE_GPU_AWARE_MPI") != nullptr)
@@ -103,6 +141,58 @@ GpuAwareMpiStatus checkMpiZEAwareSupport()
         status = GpuAwareMpiStatus::Forced;
     }
     return status;
+}
+
+namespace
+{
+
+bool usable(const GpuAwareMpiStatus status)
+{
+    return status == GpuAwareMpiStatus::Supported || status == GpuAwareMpiStatus::Forced;
+}
+
+} // namespace
+
+// This logic is not perfect. In practice a user is unlikely to have a
+// GPU-aware MPI library that does not match the GROMACS build
+// configuration. If it does match, then the logic is good enough.
+GpuAwareMpiStatus checkMpiGpuAwareSupport()
+{
+    if (auto status = checkMpiCudaAwareSupport(); usable(status))
+    {
+        return status;
+    }
+    else if (auto status = checkMpiHipAwareSupport(); usable(status))
+    {
+        return status;
+    }
+    auto status = checkMpiZEAwareSupport();
+    if (usable(status))
+    {
+        return status;
+    }
+    return GpuAwareMpiStatus::NotSupported;
+}
+
+std::string mpiLibraryDescription()
+{
+#if GMX_THREAD_MPI
+    return "thead_mpi";
+#elif GMX_LIB_MPI
+#    ifdef MPI_MAX_LIBRARY_VERSION_STRING
+    // Conformant MPI 3.0 implementation define the above symbol and
+    // the related getter method below.
+    int  mpiVersionStringLength;
+    char mpiVersionString[MPI_MAX_LIBRARY_VERSION_STRING];
+    // A null-terminated string is returned
+    MPI_Get_library_version(mpiVersionString, &mpiVersionStringLength);
+    return mpiVersionString;
+#    else
+    return "unknown library version";
+#    endif
+#else
+    return "none";
+#endif
 }
 
 } // namespace gmx

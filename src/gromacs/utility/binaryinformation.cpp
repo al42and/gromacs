@@ -339,9 +339,8 @@ void gmx_print_version_info(gmx::TextWriter* writer)
 #endif
     writer->writeLine(formatString("Memory model:       %u bit", static_cast<unsigned>(8 * sizeof(void*))));
 
-#if GMX_THREAD_MPI
-    writer->writeLine("MPI library:        thread_mpi");
-#elif GMX_MPI
+    std::string mpiLibraryVersionString = "MPI library:        " + gmx::mpiLibraryDescription();
+#if GMX_LIB_MPI
     std::vector<std::string> gpuAwareBackendsSupported;
     if (gmx::checkMpiCudaAwareSupport() == gmx::GpuAwareMpiStatus::Supported)
     {
@@ -357,16 +356,11 @@ void gmx_print_version_info(gmx::TextWriter* writer)
     }
     if (!gpuAwareBackendsSupported.empty())
     {
-        writer->writeLine(formatString("MPI library:        MPI (GPU-aware: %s)",
-                                       gmx::joinStrings(gpuAwareBackendsSupported, ", ").c_str()));
+        mpiLibraryVersionString += formatString(
+                " (GPU-aware: %s)", gmx::joinStrings(gpuAwareBackendsSupported, ", ").c_str());
     }
-    else
-    {
-        writer->writeLine("MPI library:        MPI");
-    }
-#else
-    writer->writeLine("MPI library:        none");
 #endif
+    writer->writeLine(mpiLibraryVersionString.c_str());
 #if GMX_OPENMP
     writer->writeLine(formatString("OpenMP support:     enabled (GMX_OPENMP_MAX_THREADS = %d)",
                                    GMX_OPENMP_MAX_THREADS));

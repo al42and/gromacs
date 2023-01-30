@@ -34,6 +34,8 @@
 #ifndef GMX_UTILITY_MPI_INFO_H
 #define GMX_UTILITY_MPI_INFO_H
 
+#include <string>
+
 namespace gmx
 {
 /*! \brief Enum describing GPU-aware support in underlying MPI library.
@@ -75,6 +77,20 @@ GpuAwareMpiStatus checkMpiHipAwareSupport();
  * \returns     LevelZero-aware status in MPI implementation */
 GpuAwareMpiStatus checkMpiZEAwareSupport();
 
+//! Returns the GPU-aware status of the MPI library implementation
+GpuAwareMpiStatus checkMpiGpuAwareSupport();
+
+/*! \brief
+ * Return a string describing the MPI library in use at run time.
+ *
+ * When using shared libraries, this could vary at run time, so it is
+ * safer to check at run time than rely on CMake-time checks.
+ *
+ * \return Returns "thread_mpi" for thread MPI, "none" for no MPI,
+ *         "unknown" for MPI libraries that do not support MPI 3.0,
+ *         and otherwise the string provided by the MPI library.
+ */
+std::string mpiLibraryDescription();
 
 } // namespace gmx
 
