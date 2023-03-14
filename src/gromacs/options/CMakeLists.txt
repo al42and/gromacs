@@ -47,6 +47,8 @@ add_library(options OBJECT
     treesupport.cpp
     )
 
+gmx_target_compile_options(options)
+
 # Source files have the following private module dependencies.
 target_link_libraries(options PRIVATE
                 legacy_api

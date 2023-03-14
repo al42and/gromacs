@@ -44,6 +44,9 @@ if (BUILD_SHARED_LIBS)
     set_target_properties(pulling PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
 
+# Set required compile flags
+gmx_target_compile_options(pulling)
+
 # Source files have the following dependencies on library infrastructure.
 target_link_libraries(pulling PRIVATE
                       common

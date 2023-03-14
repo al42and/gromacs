@@ -41,6 +41,8 @@ if (BUILD_SHARED_LIBS)
     set_target_properties(energyanalysis PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
 
+gmx_target_compile_options(energyanalysis)
+
 # Source files have the following dependencies on library infrastructure.
 target_link_libraries(energyanalysis PRIVATE common)
 
