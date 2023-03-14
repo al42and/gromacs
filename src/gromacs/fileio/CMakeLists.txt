@@ -48,8 +48,6 @@ else()
     list(FILTER FILEIO_SOURCES EXCLUDE REGEX ".*vmdio.cpp$")
 endif()
 
-gmx_target_compile_options(fileio)
-
 # Source files have the following private module dependencies.
 target_link_libraries(fileio PRIVATE
 #                      gmxlib
