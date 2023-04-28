@@ -1344,12 +1344,12 @@ private:
     //! A storage that contains DSSP info_ from different frames.
     DsspStorage storage_;
     //! Data container for raw data of number of secondary structures per frame.
-    AnalysisData ssNum_;
+    AnalysisData ssNumPerFrame_;
 };
 
 Dssp::Dssp()
 {
-    registerAnalysisDataset(&ssNum_, "secondaryStructuresNum");
+    registerAnalysisDataset(&ssNumPerFrame_, "secondaryStructuresNum");
 }
 
 void Dssp::initOptions(IOptionsContainer* options, TrajectoryAnalysisSettings* settings)
@@ -1386,14 +1386,13 @@ void Dssp::initOptions(IOptionsContainer* options, TrajectoryAnalysisSettings* s
                                .defaultBasename("dssp")
                                .filetype(OptionFileType::GenericData)
                                .description("Filename for DSSP output"));
-    options->addOption(
-            FileNameOption("num")
-                    .filetype(OptionFileType::Plot)
-                    .outputFile()
-                    .store(&fnmPlotOut_)
-                    .defaultBasename("num")
-                    .description(
-                            "Number of secondary structures of each type as a function of time."));
+    options->addOption(FileNameOption("num")
+                               .filetype(OptionFileType::Plot)
+                               .outputFile()
+                               .store(&fnmPlotOut_)
+                               .defaultBasename("num")
+                               .description("Output file name for secondary structures statistics "
+                                            "for the trajectory"));
     options->addOption(SelectionOption("sel").store(&sel_).defaultSelectionText("Protein").description(
             "Group for DSSP"));
     options->addOption(EnumOption<HydrogenMode>("hmode")
@@ -1441,7 +1440,7 @@ void Dssp::initAnalysis(const TrajectoryAnalysisSettings& settings, const Topolo
 
     if (!fnmPlotOut_.empty())
     {
-        ssNum_.setColumnCount(0, static_cast<std::size_t>(SecondaryStructureTypes::Count));
+        ssNumPerFrame_.setColumnCount(0, static_cast<std::size_t>(SecondaryStructureTypes::Count));
         AnalysisDataPlotModulePointer plotm(new AnalysisDataPlotModule(settings.plotSettings()));
         plotm->setFileName(fnmPlotOut_);
         plotm->setTitle("Number of Secondary Structures");
@@ -1452,7 +1451,7 @@ void Dssp::initAnalysis(const TrajectoryAnalysisSettings& settings, const Topolo
             plotm->appendLegend(i);
         }
         plotm->setYFormat(10, 0);
-        ssNum_.addModule(plotm);
+        ssNumPerFrame_.addModule(plotm);
     }
 }
 
@@ -1462,7 +1461,7 @@ void Dssp::initAfterFirstFrame(const TrajectoryAnalysisSettings& /* settings */,
 
 void Dssp::analyzeFrame(int frnr, const t_trxframe& fr, t_pbc* pbc, TrajectoryAnalysisModuleData* pdata)
 {
-    AnalysisDataHandle dhNum_ = pdata->dataHandle(ssNum_);
+    AnalysisDataHandle dhNum_ = pdata->dataHandle(ssNumPerFrame_);
     storage_.addData(frnr,
                      patternSearch_.performPatternSearch(
                              fr, pbc, nBSmode_, cutoff_, polyProHelices_, polyProStretch_));
