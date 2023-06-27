@@ -186,3 +186,11 @@ This also fixes a bug where using 0 for velocity seed in the mdp file would
 have the same effect as -1 and cause a new seed to be generated from the OS.
 
 :issue:`4809`
+
+Fix commandline-test on broken gcc versions
+"""""""""""""""""""""""""""""""""""""""""""
+
+gcc 9.3.1 would fail generating proper paths for comparison, resulting
+in test failures.
+
+:issue:`4785`
