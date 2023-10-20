@@ -456,7 +456,7 @@ public:
 
     // We'll need a temporary file to write / read our dummy checkpoint to
     TestFileManager fileManager_;
-    std::string     filename_ = fileManager_.getTemporaryFilePath("test.cpt").u8string();
+    std::string     filename_ = fileManager_.getTemporaryFilePath("test.cpt").string();
 };
 
 TEST_F(CheckpointDataTest, SingleDataTest)

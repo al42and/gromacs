@@ -81,7 +81,7 @@ TEST_F(ConvertTprTest, ExtendRuntimeExtensionTest)
     std::string   extendByString = std::to_string(extendByPs);
 
     TestFileManager   fileManager;
-    std::string       outTprFilename = fileManager.getTemporaryFilePath("extended.tpr").u8string();
+    std::string       outTprFilename = fileManager.getTemporaryFilePath("extended.tpr").string();
     const char* const command[]      = {
         "convert-tpr",          "-s",      tprFileHandle.tprName().c_str(), "-o",
         outTprFilename.c_str(), "-extend", extendByString.c_str()
@@ -102,7 +102,7 @@ TEST_F(ConvertTprTest, ExtendRuntimeExtensionTest)
 
     // Extending again (tests nsteps not zero initially
 
-    std::string anotherOutTprFilename = fileManager.getTemporaryFilePath("extended_again.tpr").u8string();
+    std::string anotherOutTprFilename = fileManager.getTemporaryFilePath("extended_again.tpr").string();
 
     const char* const secondCommand[] = { "convert-tpr",
                                           "-s",
@@ -138,7 +138,7 @@ TEST_F(ConvertTprTest, UntilRuntimeExtensionTest)
     std::string   untilPsString = std::to_string(untilPs);
 
     TestFileManager   fileManager;
-    std::string       outTprFilename = fileManager.getTemporaryFilePath("extended.tpr").u8string();
+    std::string       outTprFilename = fileManager.getTemporaryFilePath("extended.tpr").string();
     const char* const command[]      = { "convert-tpr",
                                     "-s",
                                     tprFileHandle.tprName().c_str(),
@@ -173,7 +173,7 @@ TEST_F(ConvertTprTest, nstepRuntimeExtensionTest)
     std::string   nstepsStr = std::to_string(nsteps);
 
     TestFileManager   fileManager;
-    std::string       outTprFilename = fileManager.getTemporaryFilePath("extended.tpr").u8string();
+    std::string       outTprFilename = fileManager.getTemporaryFilePath("extended.tpr").string();
     const char* const command[]      = { "convert-tpr",
                                     "-s",
                                     tprFileHandle.tprName().c_str(),
@@ -203,7 +203,7 @@ TEST_F(ConvertTprTest, generateVelocitiesTest)
     read_tpx_state(tprFileHandle.tprName().c_str(), &ir, &state, &top);
 
     TestFileManager fileManager;
-    std::string outTprFilename  = fileManager.getTemporaryFilePath("new_velocities.tpr").u8string();
+    std::string outTprFilename  = fileManager.getTemporaryFilePath("new_velocities.tpr").string();
     const char* const command[] = { "convert-tpr",
                                     "-s",
                                     tprFileHandle.tprName().c_str(),

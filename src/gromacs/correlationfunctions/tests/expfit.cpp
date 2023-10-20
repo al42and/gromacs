@@ -85,11 +85,11 @@ protected:
     {
         double**                 tempValues = nullptr;
         std::vector<std::string> fileName;
-        fileName.push_back(test::TestFileManager::getInputFilePath("testINVEXP.xvg").u8string());
-        fileName.push_back(test::TestFileManager::getInputFilePath("testPRES.xvg").u8string());
-        fileName.push_back(test::TestFileManager::getInputFilePath("testINVEXP79.xvg").u8string());
-        fileName.push_back(test::TestFileManager::getInputFilePath("testERF.xvg").u8string());
-        fileName.push_back(test::TestFileManager::getInputFilePath("testERREST.xvg").u8string());
+        fileName.push_back(test::TestFileManager::getInputFilePath("testINVEXP.xvg").string());
+        fileName.push_back(test::TestFileManager::getInputFilePath("testPRES.xvg").string());
+        fileName.push_back(test::TestFileManager::getInputFilePath("testINVEXP79.xvg").string());
+        fileName.push_back(test::TestFileManager::getInputFilePath("testERF.xvg").string());
+        fileName.push_back(test::TestFileManager::getInputFilePath("testERREST.xvg").string());
         for (const auto& aName : fileName)
         {
             const char* name = aName.c_str();
