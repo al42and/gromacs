@@ -111,7 +111,7 @@ public:
             nextLineOffset_ = 0;
         }
         //! Whether there are lines remaining for textForNextLine().
-        bool hasLinesRemaining() const { return nextLineIndex_ < ssize(lines_); }
+        bool hasLinesRemaining() const { return nextLineIndex_ < gmx::ssize(lines_); }
         /*! \brief
          * Returns the text for the next line.
          *
