@@ -57,6 +57,7 @@
 #include <string>
 #include <vector>
 
+#include "gromacs/utility/any.h"
 #include "gromacs/utility/classhelpers.h"
 
 #include "optionflags.h"
@@ -68,7 +69,6 @@ class AbstractOptionStorage;
 template<typename T>
 class OptionStorageTemplate;
 class OptionManagerContainer;
-class Any;
 
 namespace internal
 {

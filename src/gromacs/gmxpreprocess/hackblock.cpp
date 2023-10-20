@@ -41,7 +41,6 @@
 #include "gromacs/gmxpreprocess/notset.h"
 #include "gromacs/math/vec.h"
 #include "gromacs/mdtypes/md_enums.h"
-#include "gromacs/topology/atoms.h"
 #include "gromacs/topology/symtab.h"
 #include "gromacs/utility/arrayref.h"
 #include "gromacs/utility/cstringutil.h"

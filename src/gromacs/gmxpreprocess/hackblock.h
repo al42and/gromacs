@@ -45,10 +45,10 @@
 #include <vector>
 
 #include "gromacs/gmxpreprocess/notset.h"
+#include "gromacs/topology/atoms.h"
 #include "gromacs/topology/ifunc.h"
 #include "gromacs/utility/enumerationhelpers.h"
 
-struct t_atom;
 struct t_symtab;
 
 namespace gmx

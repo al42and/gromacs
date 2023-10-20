@@ -45,6 +45,9 @@
 
 #include <queue>
 
+#include "gromacs/domdec/domdec_network.h"
+#include "gromacs/utility/enumerationhelpers.h"
+
 #include "modularsimulatorinterfaces.h"
 
 struct t_grp_tcstat;
@@ -58,7 +61,6 @@ class LegacySimulatorData;
 class ModularSimulatorAlgorithmBuilderHelper;
 struct MttkPropagatorConnectionDetails;
 class MttkData;
-class NoseHooverGroup;
 class ObservablesReducer;
 class StatePropagatorData;
 enum class UseFullStepKE;
@@ -77,6 +79,70 @@ enum class NhcUsage
     System,   //!< Couple system to temperature bath
     Barostat, //!< Couple barostat to temperature bath
     Count     //!< Number of enum entries
+};
+
+// Names of the NHC usage options
+static constexpr EnumerationArray<NhcUsage, const char*> nhcUsageNames = { "System", "Barostat" };
+
+//! The current state of the Nose-Hoover chain degree of freedom for a temperature group
+class NoseHooverGroup final
+{
+public:
+    //! Constructor
+    NoseHooverGroup(int      chainLength,
+                    real     referenceTemperature,
+                    real     numDegreesOfFreedom,
+                    real     couplingTime,
+                    real     couplingTimeStep,
+                    NhcUsage nhcUsage);
+
+    //! Trotter operator for the NHC degrees of freedom
+    real applyNhc(real currentKineticEnergy, real couplingTimeStep);
+
+    //! Save to or restore from a CheckpointData object
+    template<CheckpointDataOperation operation>
+    void doCheckpoint(CheckpointData<operation>* checkpointData);
+    //! Broadcast values read from checkpoint over DD ranks
+    void broadcastCheckpointValues(const gmx_domdec_t* dd);
+
+    //! Whether the coordinate time is at a full coupling time step
+    bool isAtFullCouplingTimeStep() const;
+    //! Update the value of the NHC integral with the current coordinates
+    void calculateIntegral();
+    //! Return the current NHC integral for the group
+    double integral() const;
+    //! Return the current time of the NHC integral for the group
+    real integralTime() const;
+
+    //! Set the reference temperature
+    void updateReferenceTemperature(real temperature);
+
+private:
+    //! Increment coordinate time and update integral if applicable
+    void finalizeUpdate(real couplingTimeStep);
+
+    //! The reference temperature of this group
+    real referenceTemperature_;
+    //! The coupling time of this group
+    const real couplingTime_;
+    //! The number of degrees of freedom in this group
+    const real numDegreesOfFreedom_;
+    //! The chain length of this group
+    const int chainLength_;
+    //! The coupling time step, indicates when the coordinates are at a full step
+    const real couplingTimeStep_;
+    //! The thermostat degree of freedom
+    std::vector<real> xi_;
+    //! Velocity of the thermostat dof
+    std::vector<real> xiVelocities_;
+    //! Work exerted by thermostat per group
+    double temperatureCouplingIntegral_;
+    //! Inverse mass of the thermostat dof
+    std::vector<real> invXiMass_;
+    //! The current time of xi and xiVelocities_
+    real coordinateTime_;
+    //! The current time of the temperature integral
+    real integralTime_;
 };
 
 /*! \internal
