@@ -45,7 +45,6 @@
 #include "gromacs/mdlib/gmx_omp_nthreads.h"
 #include "gromacs/mdtypes/enerdata.h"
 #include "gromacs/mdtypes/forceoutput.h"
-#include "gromacs/mdtypes/inputrec.h"
 #include "gromacs/mdtypes/interaction_const.h"
 #include "gromacs/mdtypes/md_enums.h"
 #include "gromacs/mdtypes/nblist.h"
@@ -107,7 +106,7 @@ void FreeEnergyDispatch::setupFepThreadedForceBuffer(const int numAtomsForce, co
         setReductionMaskFromFepPairlist(
                 *pairlistSets.pairlistSet(gmx::InteractionLocality::Local).fepLists()[th],
                 &threadForceBuffer);
-        if (pairlistSets.params().haveMultipleDomains)
+        if (pairlistSets.params().haveMultipleDomains_)
         {
             setReductionMaskFromFepPairlist(
                     *pairlistSets.pairlistSet(gmx::InteractionLocality::NonLocal).fepLists()[th],
@@ -122,7 +121,7 @@ void FreeEnergyDispatch::setupFepThreadedForceBuffer(const int numAtomsForce, co
 
 void nonbonded_verlet_t::setupFepThreadedForceBuffer(const int numAtomsForce)
 {
-    if (!pairlistSets_->params().haveFep)
+    if (!pairlistSets_->params().haveFep_)
     {
         return;
     }
@@ -156,7 +155,6 @@ void dispatchFreeEnergyKernel(gmx::ArrayRef<const std::unique_ptr<t_nblist>>   n
                               gmx::ArrayRef<const real>                        chargeB,
                               gmx::ArrayRef<const int>                         typeA,
                               gmx::ArrayRef<const int>                         typeB,
-                              t_lambda*                                        fepvals,
                               gmx::ArrayRef<const real>                        lambda,
                               const bool                           clearForcesAndEnergies,
                               gmx::ThreadedForceBuffer<gmx::RVec>* threadedForceBuffer,
@@ -233,7 +231,8 @@ void dispatchFreeEnergyKernel(gmx::ArrayRef<const std::unique_ptr<t_nblist>>   n
     /* If we do foreign lambda and we have soft-core interactions
      * we have to recalculate the (non-linear) energies contributions.
      */
-    if (fepvals->n_lambda > 0 && stepWork.computeDhdl && haveSoftCore(*ic.softCoreParameters))
+    if (enerd->foreignLambdaTerms.numLambdas() > 0 && stepWork.computeDhdl
+        && haveSoftCore(*ic.softCoreParameters))
     {
         gmx::StepWorkload stepWorkForeignEnergies = stepWork;
         stepWorkForeignEnergies.computeForces     = false;
@@ -247,9 +246,11 @@ void dispatchFreeEnergyKernel(gmx::ArrayRef<const std::unique_ptr<t_nblist>>   n
         for (gmx::Index i = 0; i < 1 + enerd->foreignLambdaTerms.numLambdas(); i++)
         {
             std::fill(std::begin(dvdl_nb), std::end(dvdl_nb), 0);
-            for (int j = 0; j < static_cast<int>(FreeEnergyPerturbationCouplingType::Count); j++)
+            for (auto fepct : gmx::EnumerationWrapper<FreeEnergyPerturbationCouplingType>{})
             {
-                lam_i[j] = (i == 0 ? lambda[j] : fepvals->all_lambda[j][i - 1]);
+                const int j = static_cast<int>(fepct);
+
+                lam_i[j] = (i == 0 ? lambda[j] : enerd->foreignLambdaTerms.foreignLambdas(fepct)[i - 1]);
             }
 
 #pragma omp parallel for schedule(static) num_threads(nbl_fep.ssize())
@@ -302,11 +303,7 @@ void dispatchFreeEnergyKernel(gmx::ArrayRef<const std::unique_ptr<t_nblist>>   n
             std::array<real, F_NRE> foreign_term = { 0 };
             sum_epot(*foreignGroupPairEnergies, foreign_term.data());
             // Accumulate the foreign energy difference and dV/dlambda into the passed enerd
-            enerd->foreignLambdaTerms.accumulate(
-                    i,
-                    foreign_term[F_EPOT],
-                    dvdl_nb[FreeEnergyPerturbationCouplingType::Vdw]
-                            + dvdl_nb[FreeEnergyPerturbationCouplingType::Coul]);
+            enerd->foreignLambdaTerms.accumulate(i, foreign_term[F_EPOT], dvdl_nb);
         }
     }
 }
@@ -326,18 +323,17 @@ void FreeEnergyDispatch::dispatchFreeEnergyKernels(const PairlistSets& pairlistS
                                                    gmx::ArrayRef<const real>      chargeB,
                                                    gmx::ArrayRef<const int>       typeA,
                                                    gmx::ArrayRef<const int>       typeB,
-                                                   t_lambda*                      fepvals,
                                                    gmx::ArrayRef<const real>      lambda,
                                                    gmx_enerdata_t*                enerd,
                                                    const gmx::StepWorkload&       stepWork,
                                                    t_nrnb*                        nrnb,
                                                    gmx_wallcycle*                 wcycle)
 {
-    GMX_ASSERT(pairlistSets.params().haveFep, "We should have a free-energy pairlist");
+    GMX_ASSERT(pairlistSets.params().haveFep_, "We should have a free-energy pairlist");
 
     wallcycle_sub_start(wcycle, WallCycleSubCounter::NonbondedFep);
 
-    const int numLocalities = (pairlistSets.params().haveMultipleDomains ? 2 : 1);
+    const int numLocalities = (pairlistSets.params().haveMultipleDomains_ ? 2 : 1);
     // The first call to dispatchFreeEnergyKernel() should clear the buffers. Clearing happens
     // inside that function to avoid an extra OpenMP parallel region here. We need a boolean
     // to track the need for clearing.
@@ -363,7 +359,6 @@ void FreeEnergyDispatch::dispatchFreeEnergyKernels(const PairlistSets& pairlistS
                                      chargeB,
                                      typeA,
                                      typeB,
-                                     fepvals,
                                      lambda,
                                      clearForcesAndEnergies,
                                      &threadedForceBuffer_,
@@ -428,13 +423,12 @@ void nonbonded_verlet_t::dispatchFreeEnergyKernels(const gmx::ArrayRefWithPaddin
                                                    gmx::ArrayRef<const real>      chargeB,
                                                    gmx::ArrayRef<const int>       typeA,
                                                    gmx::ArrayRef<const int>       typeB,
-                                                   t_lambda*                      fepvals,
                                                    gmx::ArrayRef<const real>      lambda,
                                                    gmx_enerdata_t*                enerd,
                                                    const gmx::StepWorkload&       stepWork,
                                                    t_nrnb*                        nrnb)
 {
-    if (!pairlistSets_->params().haveFep)
+    if (!pairlistSets_->params().haveFep_)
     {
         return;
     }
@@ -454,7 +448,6 @@ void nonbonded_verlet_t::dispatchFreeEnergyKernels(const gmx::ArrayRefWithPaddin
                                                    chargeB,
                                                    typeA,
                                                    typeB,
-                                                   fepvals,
                                                    lambda,
                                                    enerd,
                                                    stepWork,

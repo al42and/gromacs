@@ -227,8 +227,7 @@ std::string formatString(std::string fmt, Args... args)
     std::ostringstream os;
     std::string        delimiter = "{}";
 
-    auto next_token = [](std::string& s, const std::string& delimiter_)
-    {
+    auto next_token = [](std::string& s, const std::string& delimiter_) {
         std::string token = s.substr(0, s.find(delimiter_));
 
         std::size_t next = s.find(delimiter_);

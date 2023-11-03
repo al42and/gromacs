@@ -339,7 +339,8 @@ void printInteractionParameters(gmx::TextWriter* writer, t_functype ftype, const
             writer->writeLineFormatted("doh=%15.8e, dhh=%15.8e", iparams.settle.doh, iparams.settle.dhh);
             break;
         case F_VSITE1: writer->ensureEmptyLine(); break;
-        case F_VSITE2: writer->writeLineFormatted("a=%15.8e", iparams.vsite.a); break;
+        case F_VSITE2:
+        case F_VSITE2FD: writer->writeLineFormatted("a=%15.8e", iparams.vsite.a); break;
         case F_VSITE3:
         case F_VSITE3FD:
         case F_VSITE3FAD:
@@ -366,7 +367,7 @@ void printInteractionParameters(gmx::TextWriter* writer, t_functype ftype, const
         case F_CMAP:
             writer->writeLineFormatted("cmapA=%1d, cmapB=%1d", iparams.cmap.cmapA, iparams.cmap.cmapB);
             break;
-        case F_RESTRANGLES: printHarmonicInteraction(writer, iparams, "ktheta", "costheta0"); break;
+        case F_RESTRANGLES: printHarmonicInteraction(writer, iparams, "costheta0", "ktheta"); break;
         case F_RESTRDIHS:
             writer->writeLineFormatted("phiA=%15.8e, cpA=%15.8e", iparams.pdihs.phiA, iparams.pdihs.cpA);
             break;

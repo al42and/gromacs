@@ -31,16 +31,13 @@
 # To help us fund GROMACS development, we humbly ask that you cite
 # the research papers on the package. Check out https://www.gromacs.org.
 
-project(HipSyclTest)
 cmake_minimum_required(VERSION 3.0)
+project(HipSyclTest)
 find_package(hipsycl REQUIRED)
 
 # By default, this project will fail compilation if it can't use hipSYCL compiler.
 # By defining CHECK_x_TARGET we can also make it fail if the specified backend is not among the compilation targets.
 
-if (CHECK_TEST_MACRO_IS_SET)
-    add_compile_definitions(CHECK_TEST_MACRO_IS_SET)
-endif()
 if (CHECK_CUDA_TARGET)
     add_compile_definitions(CHECK_CUDA_TARGET)
 endif()

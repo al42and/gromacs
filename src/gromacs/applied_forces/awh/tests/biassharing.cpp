@@ -142,7 +142,7 @@ void sharingSamplesFrictionTest(const void* nStepsArg)
                                                     0.5,
                                                     0,
                                                     shareGroup);
-    const AwhDimParams& awhDimParams = params.awhParams.awhBiasParams()[0].dimParams()[0];
+    const AwhDimParams& awhDimParams = params.awhParams.awhBiasParams(0).dimParams(0);
 
     BiasSharing biasSharing(params.awhParams, commRecord, MPI_COMM_WORLD);
 
@@ -151,7 +151,7 @@ void sharingSamplesFrictionTest(const void* nStepsArg)
     const int biasIndex = 0;
     Bias      bias(biasIndex,
               params.awhParams,
-              params.awhParams.awhBiasParams()[0],
+              params.awhParams.awhBiasParams(0),
               params.dimParams,
               params.beta,
               mdTimeStep,
@@ -189,7 +189,7 @@ void sharingSamplesFrictionTest(const void* nStepsArg)
         rankWeightSumTot.push_back(bias.state().points()[pointIndex].weightSumTot());
         rankWeightSumIteration.push_back(bias.state().points()[pointIndex].weightSumIteration());
         rankLocalFriction.push_back(
-                forceCorrelation.tensors()[pointIndex].getVolumeElement(forceCorrelation.dtSample));
+                forceCorrelation.tensors()[pointIndex].getVolumeElement(forceCorrelation.dtSample_));
         std::vector correlationIntegral = bias.state().getSharedPointCorrelationIntegral(pointIndex);
         /* The volume element has units of (sqrt(time)*(units of data))^(ndim of data) */
         rankSharedFriction.push_back(getSqrtDeterminant(correlationIntegral));

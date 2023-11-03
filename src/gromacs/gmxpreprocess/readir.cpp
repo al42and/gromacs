@@ -1385,12 +1385,9 @@ void check_ir(const char*                    mdparin,
         sprintf(warn_buf,
                 "The %s barostat does not generate any strictly correct ensemble, "
                 "and should not be used for new production simulations (in our opinion). "
-                "For isotropic scaling we would recommend the %s barostat that also "
-                "ensures fast relaxation without oscillations, and for anisotropic "
-                "scaling you likely want to use the %s barostat.",
+                "We recommend using the %s barostat instead.",
                 enumValueToString(ir->pressureCouplingOptions.epc),
-                enumValueToString(PressureCoupling::CRescale),
-                enumValueToString(PressureCoupling::ParrinelloRahman));
+                enumValueToString(PressureCoupling::CRescale));
         wi->addWarning(warn_buf);
     }
 
@@ -1400,6 +1397,21 @@ void check_ir(const char*                    mdparin,
         wi->addNote(
                 "Old option for pressure coupling given: "
                 "changing \"Isotropic\" to \"Berendsen\"\n");
+    }
+
+    if (ir->pressureCouplingOptions.epc == PressureCoupling::CRescale)
+    {
+        switch (ir->pressureCouplingOptions.epct)
+        {
+            case PressureCouplingType::Isotropic:
+            case PressureCouplingType::SemiIsotropic:
+            case PressureCouplingType::SurfaceTension: break; // supported
+            default:
+                sprintf(err_buf,
+                        "C-rescale does not support pressure coupling type %s yet\n",
+                        enumValueToString(ir->pressureCouplingOptions.epct));
+                wi->addError(err_buf);
+        }
     }
 
     if (ir->pressureCouplingOptions.epc != PressureCoupling::No)
@@ -1732,6 +1744,24 @@ void check_ir(const char*                    mdparin,
     if (ir->cos_accel != 0.0 && ir->eI != IntegrationAlgorithm::MD)
     {
         wi->addError("cos-acceleration is only supported by integrator = md");
+    }
+
+    // do checks on the initialization of the flow profile with deform
+    if (ir_haveBoxDeformation(*ir) && !opts->deformInitFlow)
+    {
+        if (opts->bGenVel)
+        {
+            wi->addError(
+                    "When the box is deformed and velocities are generated, the flow profile "
+                    "should be initialized by setting deform-init-flow=yes");
+        }
+        else if (!ir->bContinuation)
+        {
+            wi->addNote(
+                    "Unless the velocities in the initial configuration already obey the flow "
+                    "profile, the flow profile should be initialized by setting "
+                    "deform-init-flow=yes when using the deform option");
+        }
     }
 }
 
@@ -2375,7 +2405,7 @@ void get_ir(const char*     mdparin,
     ir->pressureCouplingOptions.epct       = getEnum<PressureCouplingType>(&inp, "pcoupltype", wi);
     ir->pressureCouplingOptions.nstpcouple = get_eint(&inp, "nstpcouple", -1, wi);
     printStringNoNewline(&inp, "Time constant (ps), compressibility (1/bar) and reference P (bar)");
-    ir->pressureCouplingOptions.tau_p = get_ereal(&inp, "tau-p", 1.0, wi);
+    ir->pressureCouplingOptions.tau_p = get_ereal(&inp, "tau-p", 5.0, wi);
     setStringEntry(&inp, "compressibility", dumstr[0], nullptr);
     setStringEntry(&inp, "ref-p", dumstr[1], nullptr);
     printStringNoNewline(&inp, "Scaling of reference coordinates, No, All or COM");
@@ -2581,6 +2611,7 @@ void get_ir(const char*     mdparin,
     setStringEntry(&inp, "freezedim", inputrecStrings->frdim, nullptr);
     ir->cos_accel = get_ereal(&inp, "cos-acceleration", 0, wi);
     setStringEntry(&inp, "deform", inputrecStrings->deform, nullptr);
+    opts->deformInitFlow = (getEnum<Boolean>(&inp, "deform-init-flow", wi) != Boolean::No);
 
     /* simulated tempering variables */
     printStringNewline(&inp, "simulated tempering variables");
@@ -3074,7 +3105,7 @@ int getGroupIndex(const std::string& s, gmx::ArrayRef<const IndexGroup> indexGro
     }
 
     gmx_fatal(FARGS,
-              "Group %s referenced in the .mdp file was not found in the index file.\n"
+              "Group %s referenced in the .mdp file was not found in the list of index groups.\n"
               "Group names must match either [moleculetype] names or custom index group\n"
               "names, in which case you must supply an index file to the '-n' option\n"
               "of grompp.",
@@ -3772,9 +3803,13 @@ static void processEnsembleTemperature(t_inputrec* ir, const bool allAtomsCouple
             }
             else if (doSimulatedAnnealing(*ir) && ir->opts.ngtc > 1)
             {
+                // We could support ensemble temperature if all annealing groups have the same
+                // temperature, but that is bug-prone, so we don't implement that.
                 fprintf(stderr,
                         "Simulated tempering is used with multiple T-coupling groups: setting the "
                         "ensemble temperature to not available\n");
+                ir->ensembleTemperatureSetting = EnsembleTemperatureSetting::NotAvailable;
+                ir->ensembleTemperature        = -1;
             }
             else if (doSimulatedAnnealing(*ir) || ir->bSimTemp)
             {
@@ -5134,6 +5169,46 @@ void triple_check(const char* mdparin, t_inputrec* ir, gmx_mtop_t* sys, WarningH
     if (ir->bDoAwh && !haveConstantEnsembleTemperature(*ir))
     {
         wi->addError("With AWH a constant ensemble temperature is required");
+    }
+
+    if (ir_haveBoxDeformation(*ir))
+    {
+        if (EI_DYNAMICS(ir->eI) && ir->eI != IntegrationAlgorithm::MD
+            && (EI_SD(ir->eI) || ir->etc != TemperatureCoupling::No))
+        {
+            sprintf(warn_buf,
+                    "With all integrators except for %s, the whole velocity including the flow "
+                    "driven by the deform option is scaled by the thermostat (note that the "
+                    "reported kinetic energies and temperature are always computed excluding the "
+                    "flow profile)",
+                    enumValueToString(IntegrationAlgorithm::MD));
+            wi->addNote(warn_buf);
+        }
+
+        if (ir->opts.ngtc != 1)
+        {
+            wi->addError("With box deformation, a single temperature coupling group is required");
+        }
+    }
+
+    int numAccelerationAlgorithms = 0;
+    if (ir->useConstantAcceleration)
+    {
+        numAccelerationAlgorithms++;
+    }
+    if (ir->cos_accel != 0)
+    {
+        numAccelerationAlgorithms++;
+    }
+    if (ir_haveBoxDeformation(*ir))
+    {
+        numAccelerationAlgorithms++;
+    }
+    if (numAccelerationAlgorithms > 1)
+    {
+        wi->addError(
+                "Only one of the following three non-equilibrium methods is supported at a time: "
+                "constant acceleration groups, cosine acceleration, box deformation");
     }
 
     check_disre(*sys);

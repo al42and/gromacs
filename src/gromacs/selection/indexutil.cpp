@@ -84,7 +84,8 @@ std::vector<Index> IndexGroupsAndNames::indices(const std::string& groupName) co
         GMX_THROW(
                 InconsistentInputError(
                         std::string("Group ") + groupName
-                        + " referenced in the .mdp file was not found in the index file.\n"
+                        + " referenced in the .mdp file was not found in the list of index "
+                          "groups.\n"
                           "Group names must match either [moleculetype] names or custom index "
                           "group\n"
                           "names, in which case you must supply an index file to the '-n' option\n"
@@ -206,11 +207,7 @@ bool gmx_ana_indexgrps_extract(gmx_ana_index_t* dest, std::string* destName, gmx
         dest->isize = 0;
         return false;
     }
-
-    if (destName != nullptr)
-    {
-        *destName = src->names[n];
-    }
+    *destName = src->names[n];
     gmx_ana_index_copy(dest, &src->g[n], true);
     return true;
 }

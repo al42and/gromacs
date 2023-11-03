@@ -443,6 +443,7 @@ double BiasState::calcUmbrellaForceAndPotential(ArrayRef<const DimParams> dimPar
     {
         if (dimParams[d].isFepLambdaDimension())
         {
+            /* The force we set here is only used for computing the friction metric */
             if (!neighborLambdaDhdl.empty())
             {
                 const int coordpointLambdaIndex = grid.point(point).coordValue[d];
@@ -1041,7 +1042,7 @@ bool BiasState::isSamplingRegionCovered(const BiasParams&         params,
         {
             biasSharing_->sumOverSharingSimulations(
                     gmx::arrayRefFromArray(checkDim[d].covered.data(), grid.axis(d).numPoints()),
-                    params.biasIndex);
+                    params.biasIndex_);
         }
     }
 
@@ -1094,16 +1095,16 @@ void BiasState::updateFreeEnergyAndAddSamplesToHistogram(ArrayRef<const DimParam
     makeLocalUpdateList(grid, points_, originUpdatelist_, endUpdatelist_, updateList);
     if (params.numSharedUpdate > 1)
     {
-        mergeSharedUpdateLists(updateList, points_.size(), *biasSharing_, params.biasIndex);
+        mergeSharedUpdateLists(updateList, points_.size(), *biasSharing_, params.biasIndex_);
     }
 
     /* Reset the range for the next update */
     resetLocalUpdateRange(grid);
 
     /* Add samples to histograms for all local points and sync simulations if needed */
-    sumHistograms(points_, weightSumCovering_, params.numSharedUpdate, biasSharing_, params.biasIndex, *updateList);
+    sumHistograms(points_, weightSumCovering_, params.numSharedUpdate, biasSharing_, params.biasIndex_, *updateList);
 
-    sumPmf(points_, params.numSharedUpdate, biasSharing_, params.biasIndex);
+    sumPmf(points_, params.numSharedUpdate, biasSharing_, params.biasIndex_);
 
     /* Renormalize the free energy if values are too large. */
     bool needToNormalizeFreeEnergy = false;
@@ -1566,10 +1567,10 @@ void BiasState::updateSharedCorrelationTensorTimeIntegral(const BiasParams&     
     {
         GMX_ASSERT(biasSharing_ != nullptr
                            && biasParams.numSharedUpdate
-                                              % biasSharing_->numSharingSimulations(biasParams.biasIndex)
+                                              % biasSharing_->numSharingSimulations(biasParams.biasIndex_)
                                       == 0,
                    "numSharedUpdate should be a multiple of multiSimComm->numSimulations_");
-        GMX_ASSERT(biasParams.numSharedUpdate == biasSharing_->numSharingSimulations(biasParams.biasIndex),
+        GMX_ASSERT(biasParams.numSharedUpdate == biasSharing_->numSharingSimulations(biasParams.biasIndex_),
                    "Sharing within a simulation is not implemented (yet)");
 
         for (int gridPointIndex = 0; gridPointIndex < numPoints; gridPointIndex++)
@@ -1581,13 +1582,13 @@ void BiasState::updateSharedCorrelationTensorTimeIntegral(const BiasParams&     
                 {
                     int index     = gridPointIndex * numCorrelation + correlationTensorIndex;
                     buffer[index] = forceCorrelation.tensors()[gridPointIndex].getTimeIntegral(
-                                            correlationTensorIndex, forceCorrelation.dtSample)
+                                            correlationTensorIndex, forceCorrelation.dtSample_)
                                     * points_[gridPointIndex].localWeightSum();
                 }
             }
         }
 
-        biasSharing_->sumOverSharingSimulations(buffer, biasParams.biasIndex);
+        biasSharing_->sumOverSharingSimulations(buffer, biasParams.biasIndex_);
 
         for (int gridPointIndex = 0; gridPointIndex < numPoints; gridPointIndex++)
         {
@@ -1616,7 +1617,7 @@ void BiasState::updateSharedCorrelationTensorTimeIntegral(const BiasParams&     
             {
                 sharedCorrelationTensorTimeIntegral_[gridPointIndex][correlationTensorIndex] =
                         forceCorrelation.tensors()[gridPointIndex].getTimeIntegral(
-                                correlationTensorIndex, forceCorrelation.dtSample);
+                                correlationTensorIndex, forceCorrelation.dtSample_);
             }
         }
     }
@@ -1910,7 +1911,7 @@ void BiasState::initGridPointState(const AwhBiasParams&      awhBiasParams,
      */
     if (awhBiasParams.userPMFEstimate())
     {
-        readUserPmfAndTargetDistribution(dimParams, grid, filename, numBias, params.biasIndex, &points_);
+        readUserPmfAndTargetDistribution(dimParams, grid, filename, numBias, params.biasIndex_, &points_);
         setFreeEnergyToConvolvedPmf(dimParams, grid);
     }
 

@@ -340,6 +340,13 @@ void checkFepLambdaDimParams(const std::string&               prefix,
                 "The force AWH bias force constant is not used with free energy lambda state as "
                 "coordinate provider.");
     }
+
+    if (!fepLambdasChangeAtSameRate(lambdaParams->all_lambda))
+    {
+        wi->addWarning(
+                "Some free-energy lambda components change at different rates over some lambda "
+                "interval. The friction metric will be incorrect for such intervals.");
+    }
 }
 
 /*! \brief
@@ -421,6 +428,12 @@ void checkBiasParams(const AwhBiasParams& awhBiasParams,
     if (awhBiasParams.initialErrorEstimate() <= 0)
     {
         wi->addError(gmx::formatString("%s needs to be > 0.", opt.c_str()));
+    }
+
+    if (awhBiasParams.growthFactor() <= 1)
+    {
+        opt = prefix + "-growth-factor";
+        wi->addError(gmx::formatString("%s needs to be > 1.", opt.c_str()));
     }
 
     opt = prefix + "-equilibrate-histogram";
@@ -519,7 +532,7 @@ void checkBiasParams(const AwhBiasParams& awhBiasParams,
     for (int d = 0; d < awhBiasParams.ndim(); d++)
     {
         std::string prefixdim = prefix + formatString("-dim%d", d + 1);
-        checkDimParams(prefixdim, awhBiasParams.dimParams()[d], ir, wi);
+        checkDimParams(prefixdim, awhBiasParams.dimParams(d), ir, wi);
     }
 }
 
@@ -532,7 +545,7 @@ void checkBiasParams(const AwhBiasParams& awhBiasParams,
 void checkInputConsistencyAwhBias(const AwhBiasParams& awhBiasParams, WarningHandler* wi)
 {
     /* Covering diameter and sharing warning. */
-    auto awhBiasDimensionParams = awhBiasParams.dimParams();
+    const auto awhBiasDimensionParams = awhBiasParams.dimParams();
     for (const auto& dimensionParam : awhBiasDimensionParams)
     {
         double coverDiameter = dimensionParam.coverDiameter();
@@ -555,8 +568,8 @@ void checkInputConsistencyAwh(const AwhParams& awhParams, WarningHandler* wi)
     /* Each pull coord can map to at most 1 AWH coord.
      * Check that we have a shared bias when requesting multisim sharing.
      */
-    bool haveSharedBias = false;
-    auto awhBiasParams  = awhParams.awhBiasParams();
+    bool       haveSharedBias = false;
+    const auto awhBiasParams  = awhParams.awhBiasParams();
     for (int k1 = 0; k1 < awhParams.numBias(); k1++)
     {
         const AwhBiasParams& awhBiasParams1 = awhBiasParams[k1];
@@ -756,6 +769,13 @@ AwhBiasParams::AwhBiasParams(std::vector<t_inpfile>* inp, const std::string& pre
 
     if (bComment)
     {
+        printStringNoNewline(inp, "Growth factor during the exponential growth phase");
+    }
+    opt           = prefix + "-growth-factor";
+    growthFactor_ = get_ereal(inp, opt, 2, wi);
+
+    if (bComment)
+    {
         printStringNoNewline(inp,
                              "Start the simulation by equilibrating histogram towards the target "
                              "distribution: no or yes");
@@ -821,7 +841,7 @@ AwhBiasParams::AwhBiasParams(std::vector<t_inpfile>* inp, const std::string& pre
     }
 }
 
-AwhBiasParams::AwhBiasParams(ISerializer* serializer)
+AwhBiasParams::AwhBiasParams(ISerializer* serializer, const bool tprWithoutGrowthFactor)
 {
     GMX_RELEASE_ASSERT(serializer->reading(),
                        "Can not use writing serializer to create datastructure");
@@ -829,6 +849,15 @@ AwhBiasParams::AwhBiasParams(ISerializer* serializer)
     serializer->doDouble(&targetBetaScaling_);
     serializer->doDouble(&targetCutoff_);
     serializer->doEnumAsInt(&eGrowth_);
+    if (tprWithoutGrowthFactor)
+    {
+        // A factor 3 was the old, hard-coded value
+        growthFactor_ = 3;
+    }
+    else
+    {
+        serializer->doDouble(&growthFactor_);
+    }
     int temp = 0;
     serializer->doInt(&temp);
     bUserData_ = static_cast<bool>(temp);
@@ -852,6 +881,7 @@ void AwhBiasParams::serialize(ISerializer* serializer)
     serializer->doDouble(&targetBetaScaling_);
     serializer->doDouble(&targetCutoff_);
     serializer->doEnumAsInt(&eGrowth_);
+    serializer->doDouble(&growthFactor_);
     int temp = static_cast<int>(bUserData_);
     serializer->doInt(&temp);
     serializer->doDouble(&errorInitial_);
@@ -924,7 +954,7 @@ AwhParams::AwhParams(std::vector<t_inpfile>* inp, WarningHandler* wi)
     checkInputConsistencyAwh(*this, wi);
 }
 
-AwhParams::AwhParams(ISerializer* serializer)
+AwhParams::AwhParams(ISerializer* serializer, const bool tprWithoutGrowthFactor)
 {
     GMX_RELEASE_ASSERT(serializer->reading(),
                        "Can not use writing serializer to read AWH parameters");
@@ -941,7 +971,7 @@ AwhParams::AwhParams(ISerializer* serializer)
     {
         for (int k = 0; k < numberOfBiases; k++)
         {
-            awhBiasParams_.emplace_back(serializer);
+            awhBiasParams_.emplace_back(serializer, tprWithoutGrowthFactor);
         }
     }
 }

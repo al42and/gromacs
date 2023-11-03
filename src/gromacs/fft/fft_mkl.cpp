@@ -99,7 +99,6 @@ struct gmx_fft
     int              ndim;       /**< Number of dimensions in FFT  */
     int              nx;         /**< Length of X transform        */
     int              ny;         /**< Length of Y transform        */
-    int              nz;         /**< Length of Z transform        */
     int              real_fft;   /**< 1 if real FFT, otherwise 0   */
     DFTI_DESCRIPTOR* inplace[3]; /**< in-place FFT                 */
     DFTI_DESCRIPTOR* ooplace[4]; /**< out-of-place FFT             */
@@ -154,12 +153,12 @@ int gmx_fft_init_1d(gmx_fft_t* pfft, int nxInt, gmx_fft_flag gmx_unused flags)
 
     if (status == 0)
     {
-        DftiSetValue(fft->ooplace[0], DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+        status = DftiSetValue(fft->ooplace[0], DFTI_PLACEMENT, DFTI_NOT_INPLACE);
     }
 
     if (status == 0)
     {
-        DftiCommitDescriptor(fft->ooplace[0]);
+        status = DftiCommitDescriptor(fft->ooplace[0]);
     }
 
 
@@ -348,6 +347,8 @@ int gmx_fft_init_2d_real(gmx_fft_t* pfft, int nxInt, int nyInt, gmx_fft_flag gmx
         stride[1] = 1;
 
         status = (DftiSetValue(fft->inplace[1], DFTI_PLACEMENT, DFTI_INPLACE)
+                  || DftiSetValue(fft->inplace[1], DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_REAL)
+                  || DftiSetValue(fft->inplace[1], DFTI_PACKED_FORMAT, DFTI_CCS_FORMAT)
                   || DftiSetValue(fft->inplace[1], DFTI_NUMBER_OF_TRANSFORMS, nx)
                   || DftiSetValue(fft->inplace[1], DFTI_INPUT_DISTANCE, 2 * nyc)
                   || DftiSetValue(fft->inplace[1], DFTI_INPUT_STRIDES, stride)
@@ -369,6 +370,8 @@ int gmx_fft_init_2d_real(gmx_fft_t* pfft, int nxInt, int nyInt, gmx_fft_flag gmx
         stride[1] = 1;
 
         status = (DftiSetValue(fft->ooplace[1], DFTI_PLACEMENT, DFTI_NOT_INPLACE)
+                  || DftiSetValue(fft->ooplace[1], DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_REAL)
+                  || DftiSetValue(fft->ooplace[1], DFTI_PACKED_FORMAT, DFTI_CCS_FORMAT)
                   || DftiSetValue(fft->ooplace[1], DFTI_NUMBER_OF_TRANSFORMS, nx)
                   || DftiSetValue(fft->ooplace[1], DFTI_INPUT_DISTANCE, ny)
                   || DftiSetValue(fft->ooplace[1], DFTI_INPUT_STRIDES, stride)
@@ -390,6 +393,8 @@ int gmx_fft_init_2d_real(gmx_fft_t* pfft, int nxInt, int nyInt, gmx_fft_flag gmx
         stride[1] = 1;
 
         status = (DftiSetValue(fft->ooplace[2], DFTI_PLACEMENT, DFTI_NOT_INPLACE)
+                  || DftiSetValue(fft->ooplace[2], DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_REAL)
+                  || DftiSetValue(fft->ooplace[2], DFTI_PACKED_FORMAT, DFTI_CCS_FORMAT)
                   || DftiSetValue(fft->ooplace[2], DFTI_NUMBER_OF_TRANSFORMS, nx)
                   || DftiSetValue(fft->ooplace[2], DFTI_INPUT_DISTANCE, 2 * nyc)
                   || DftiSetValue(fft->ooplace[2], DFTI_INPUT_STRIDES, stride)

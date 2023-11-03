@@ -231,18 +231,17 @@ static std::unique_ptr<nonbonded_verlet_t> setupNbnxmForBenchInstance(const Kern
 
     const real atomDensity = system.coordinates.size() / det(system.box);
 
-    nbnxn_put_on_grid(nbv.get(),
-                      system.box,
-                      0,
-                      lowerCorner,
-                      upperCorner,
-                      nullptr,
-                      { 0, int(system.coordinates.size()) },
-                      atomDensity,
-                      atomInfo,
-                      system.coordinates,
-                      0,
-                      nullptr);
+    nbv->putAtomsOnGrid(system.box,
+                        0,
+                        lowerCorner,
+                        upperCorner,
+                        nullptr,
+                        { 0, int(system.coordinates.size()) },
+                        atomDensity,
+                        atomInfo,
+                        system.coordinates,
+                        0,
+                        nullptr);
 
     nbv->constructPairlist(gmx::InteractionLocality::Local, system.excls, 0, &nrnb);
 
@@ -301,7 +300,7 @@ static void setupAndRunInstance(const gmx::BenchmarkSystem& system,
 
     t_nrnb nrnb = { 0 };
 
-    gmx_enerdata_t enerd(1, 0);
+    gmx_enerdata_t enerd(1, nullptr);
 
     gmx::StepWorkload stepWork;
     stepWork.computeForces = true;

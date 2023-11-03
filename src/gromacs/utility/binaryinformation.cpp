@@ -263,9 +263,9 @@ std::string getGpuFftDescriptionString()
         {
             return std::string("rocFFT ") + rocfft_VERSION;
         }
-        else if (GMX_GPU_FFT_DBFFT)
+        else if (GMX_GPU_FFT_BBFFT)
         {
-            return std::string("Double-Batched FFT Library ") + dbfft_VERSION;
+            return std::string("Double-Batched FFT Library ") + bbfft_VERSION;
         }
         else
         {
@@ -376,7 +376,12 @@ void gmx_print_version_info(gmx::TextWriter* writer)
     writer->writeLine(formatString("GPU support:        %s", getGpuImplementationString()));
 #if GMX_GPU
     std::string infoStr = (GMX_GPU_NB_DISABLE_CLUSTER_PAIR_SPLIT) ? " (cluster-pair splitting off)" : "";
-    writer->writeLine(formatString("NB cluster size:    %d%s", GMX_GPU_NB_CLUSTER_SIZE, infoStr.c_str()));
+    writer->writeLine(formatString("NBNxM GPU setup:    super-cluster %dx%dx%d / cluster %d%s",
+                                   GMX_GPU_NB_NUM_CLUSTER_PER_CELL_X,
+                                   GMX_GPU_NB_NUM_CLUSTER_PER_CELL_Y,
+                                   GMX_GPU_NB_NUM_CLUSTER_PER_CELL_Z,
+                                   GMX_GPU_NB_CLUSTER_SIZE,
+                                   infoStr.c_str()));
 #endif
     writer->writeLine(formatString("SIMD instructions:  %s", GMX_SIMD_STRING));
     writer->writeLine(formatString("CPU FFT library:    %s", getCpuFftDescriptionString().c_str()));
@@ -448,7 +453,8 @@ void gmx_print_version_info(gmx::TextWriter* writer)
     writer->writeLine("CUDA runtime:       " + gmx::getCudaRuntimeVersionString());
 #endif
 #if GMX_SYCL_DPCPP
-    writer->writeLine(formatString("SYCL DPC++ flags:   %s", SYCL_DPCPP_COMPILER_FLAGS));
+    writer->writeLine(formatString("SYCL compiler flags:%s", SYCL_DPCPP_COMPILER_FLAGS));
+    writer->writeLine(formatString("SYCL linker flags:  %s", SYCL_DPCPP_LINKER_FLAGS));
     writer->writeLine("SYCL DPC++ version: " + gmx::getSyclCompilerVersion());
 #endif
 #if GMX_SYCL_HIPSYCL
@@ -541,12 +547,12 @@ void printBinaryInformation(TextWriter*                      writer,
                 formatString("%sExecutable:   %s%s", prefix, binaryPath.u8string().c_str(), suffix));
     }
     const gmx::InstallationPrefixInfo installPrefix = programContext.installationPrefix();
-    if (!installPrefix.path.empty())
+    if (!installPrefix.path_.empty())
     {
         writer->writeLine(formatString("%sData prefix:  %s%s%s",
                                        prefix,
-                                       installPrefix.path.u8string().c_str(),
-                                       installPrefix.bSourceLayout ? " (source tree)" : "",
+                                       installPrefix.path_.u8string().c_str(),
+                                       installPrefix.sourceLayoutTreeLike_ ? " (source tree)" : "",
                                        suffix));
     }
     const auto workingDir = std::filesystem::current_path();

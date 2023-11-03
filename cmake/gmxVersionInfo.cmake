@@ -247,7 +247,7 @@ set(REGRESSIONTEST_BRANCH "main")
 # directory name within the regressiontests tarball, which affects the
 # md5sum of the tarball. The matching md5sum has to go here, and if it
 # isn't right the real release workflow will report a failure.
-set(REGRESSIONTEST_MD5SUM "f697cb2624e332aa6a4ea990990a4682" CACHE INTERNAL "MD5 sum of the regressiontests tarball for this GROMACS version")
+set(REGRESSIONTEST_MD5SUM "15b29966b53accf5306c9a3d7e009963" CACHE INTERNAL "MD5 sum of the regressiontests tarball for this GROMACS version")
 
 # If you are making a custom fork of GROMACS, please describe your
 # fork, perhaps with its version number, in the value of
@@ -393,6 +393,7 @@ if (GMX_GIT_VERSION_INFO)
             -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
             -D PROJECT_VERSION=${GMX_VERSION_STRING}
             -D PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+            -D PROJECT_BINARY_DIR=${PROJECT_BINARY_DIR}
             -D VERSION_CMAKEIN=${VERSION_INFO_CMAKEIN_FILE_PARTIAL}
             -D VERSION_OUT=${VERSION_INFO_CMAKE_FILE}
             -P ${CMAKE_CURRENT_LIST_DIR}/gmxGenerateVersionInfo.cmake

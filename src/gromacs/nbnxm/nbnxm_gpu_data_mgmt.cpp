@@ -80,23 +80,6 @@
 namespace Nbnxm
 {
 
-static inline void issueClFlushInStream(const DeviceStream& deviceStream)
-{
-#if GMX_GPU_OPENCL
-    /* Based on the v1.2 section 5.13 of the OpenCL spec, a flush is needed
-     * in the stream after marking an event in it in order to be able to sync with
-     * the event from another stream.
-     */
-    cl_int cl_error = clFlush(deviceStream.stream());
-    if (cl_error != CL_SUCCESS)
-    {
-        GMX_THROW(gmx::InternalError("clFlush failed: " + ocl_get_error_string(cl_error)));
-    }
-#else
-    GMX_UNUSED_VALUE(deviceStream);
-#endif
-}
-
 static inline void init_ewald_coulomb_force_table(const EwaldCorrectionTables& tables,
                                                   NBParamGpu*                  nbp,
                                                   const DeviceContext&         deviceContext)
@@ -498,13 +481,13 @@ NbnxmGpu* gpu_init(const gmx::DeviceStreamManager& deviceStreamManager,
     return nb;
 }
 
-void gpu_pme_loadbal_update_param(const nonbonded_verlet_t* nbv, const interaction_const_t& ic)
+void gpu_pme_loadbal_update_param(nonbonded_verlet_t* nbv, const interaction_const_t& ic)
 {
     if (!nbv || !nbv->useGpu())
     {
         return;
     }
-    NbnxmGpu*   nb  = nbv->gpu_nbv;
+    NbnxmGpu*   nb  = nbv->gpuNbv();
     NBParamGpu* nbp = nb->nbparam;
 
     set_cutoff_parameters(nbp, ic, nbv->pairlistSets().params());
@@ -754,9 +737,9 @@ gmx_wallclock_gpu_nbnxn_t* gpu_get_timings(NbnxmGpu* nb)
 //! This function is documented in the header file
 void gpu_reset_timings(nonbonded_verlet_t* nbv)
 {
-    if (nbv->gpu_nbv && nbv->gpu_nbv->bDoTime)
+    if (nbv->gpuNbv() && nbv->gpuNbv()->bDoTime)
     {
-        init_timings(nbv->gpu_nbv->timings);
+        init_timings(nbv->gpuNbv()->timings);
     }
 }
 
@@ -1032,7 +1015,7 @@ void nbnxn_gpu_init_x_to_nbat_x(const Nbnxm::GridSet& gridSet, NbnxmGpu* gpu_nbv
 
     for (unsigned int g = 0; g < gridSet.grids().size(); g++)
     {
-        const Nbnxm::Grid& grid = gridSet.grids()[g];
+        const Nbnxm::Grid& grid = gridSet.grid(g);
 
         const int  numColumns      = grid.numColumns();
         const int* atomIndices     = gridSet.atomIndices().data();
@@ -1187,6 +1170,7 @@ void gpu_free(NbnxmGpu* nb)
     freeDeviceBuffer(&plist->cjPacked);
     freeDeviceBuffer(&plist->imask);
     freeDeviceBuffer(&plist->excl);
+    freeDeviceBuffer(&plist->d_rollingPruningPart);
     delete plist;
     if (nb->bUseTwoStreams)
     {
@@ -1195,9 +1179,13 @@ void gpu_free(NbnxmGpu* nb)
         freeDeviceBuffer(&plist_nl->cjPacked);
         freeDeviceBuffer(&plist_nl->imask);
         freeDeviceBuffer(&plist_nl->excl);
+        freeDeviceBuffer(&plist_nl->d_rollingPruningPart);
         delete plist_nl;
     }
 
+    freeDeviceBuffer(&nb->cxy_na);
+    freeDeviceBuffer(&nb->cxy_ind);
+    freeDeviceBuffer(&nb->atomIndices);
     /* Free nbst */
     pfree(nb->nbst.eLJ);
     nb->nbst.eLJ = nullptr;

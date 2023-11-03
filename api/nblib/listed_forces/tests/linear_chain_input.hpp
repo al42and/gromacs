@@ -130,4 +130,3 @@ public:
 } // namespace nblib
 
 #endif // NBLIB_LINEAR_CHAIN_DATA_HPP
-

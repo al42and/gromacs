@@ -92,13 +92,6 @@
 #include "pme_internal.h"
 #include "pme_solve.h"
 
-/*! \brief
- * CUDA only
- * Atom limit above which it is advantageous to turn on the
- * recalculating of the splines in the gather and using less threads per atom in the spline and spread
- */
-constexpr int c_pmeGpuPerformanceAtomLimit = 23000;
-
 /*! \internal \brief
  * Wrapper for getting a pointer to the plain C++ part of the GPU kernel parameters structure.
  *
@@ -777,20 +770,22 @@ static void pme_gpu_init_internal(PmeGpu* pmeGpu, const DeviceContext& deviceCon
     pmeGpu->archSpecific.reset(new PmeGpuSpecific(deviceContext, deviceStream));
     pmeGpu->kernelParams.reset(new PmeGpuKernelParams());
 
-    // Use in-place FFT with cuFFTMp or DBFFT.
+    // Use in-place FFT with cuFFTMp or BBFFT.
     pmeGpu->archSpecific->performOutOfPlaceFFT =
-            !((pmeGpu->settings.useDecomposition && GMX_USE_cuFFTMp) || GMX_GPU_FFT_DBFFT);
+            !((pmeGpu->settings.useDecomposition && GMX_USE_cuFFTMp) || GMX_GPU_FFT_BBFFT);
 
     /* This should give better performance, according to the cuFFT documentation.
      * The performance seems to be the same though.
      * TODO: PME could also try to pick up nice grid sizes (with factors of 2, 3, 5, 7).
      */
 
-#if GMX_GPU_CUDA
+#if GMX_GPU_CUDA || GMX_GPU_SYCL
     pmeGpu->kernelParams->usePipeline       = char(false);
     pmeGpu->kernelParams->pipelineAtomStart = 0;
     pmeGpu->kernelParams->pipelineAtomEnd   = 0;
-    pmeGpu->maxGridWidthX                   = deviceContext.deviceInfo().prop.maxGridSize[0];
+#endif
+#if GMX_GPU_CUDA
+    pmeGpu->maxGridWidthX = deviceContext.deviceInfo().prop.maxGridSize[0];
 #else
     // Use this path for any non-CUDA GPU acceleration
     // TODO: is there no really global work size limit in OpenCL?
@@ -883,9 +878,9 @@ static gmx::FftBackend getFftBackend(const PmeGpu* pmeGpu)
                         "PME decomposition on oneAPI-compatible GPUs"));
             }
         }
-        else if (GMX_GPU_FFT_DBFFT)
+        else if (GMX_GPU_FFT_BBFFT)
         {
-            return gmx::FftBackend::SyclDbfft;
+            return gmx::FftBackend::SyclBbfft;
         }
         else if (GMX_GPU_FFT_ROCFFT)
         {
@@ -1274,7 +1269,7 @@ static void pme_gpu_copy_common_data_from(const gmx_pme_t* pme)
 static void pme_gpu_select_best_performing_pme_spreadgather_kernels(PmeGpu* pmeGpu)
 {
     if (((GMX_GPU_CUDA != 0) || (GMX_GPU_SYCL != 0))
-        && pmeGpu->kernelParams->atoms.nAtoms > c_pmeGpuPerformanceAtomLimit)
+        && pmeGpu->kernelParams->atoms.nAtoms > pmeGpu->minParticleCountToRecalculateSplines)
     {
         pmeGpu->settings.threadsPerAtom     = ThreadsPerAtom::Order;
         pmeGpu->settings.recalculateSplines = true;
@@ -1440,8 +1435,11 @@ void pme_gpu_reinit_atoms(PmeGpu* pmeGpu, const int nAtoms, const real* chargesA
         /* FIXME: This should be avoided by making a separate templated version of the
          * relevant kernel(s) (probably only pme_gather_kernel). That would require a
          * reduction of the current number of templated parameters of that kernel. */
-        pme_gpu_realloc_and_copy_input_coefficients(
-                pmeGpu, reinterpret_cast<const float*>(chargesA), gridIndex);
+        if (pmeGpu->common->ngrids > 1)
+        {
+            pme_gpu_realloc_and_copy_input_coefficients(
+                    pmeGpu, reinterpret_cast<const float*>(chargesA), gridIndex);
+        }
     }
 #endif
 
@@ -1739,6 +1737,7 @@ void pme_gpu_spread(const PmeGpu*                  pmeGpu,
                     const real                     lambda,
                     const bool                     useGpuDirectComm,
                     gmx::PmeCoordinateReceiverGpu* pmeCoordinateReceiverGpu,
+                    const bool                     useMdGpuGraph,
                     gmx_wallcycle*                 wcycle)
 {
     GMX_ASSERT(
@@ -1848,7 +1847,17 @@ void pme_gpu_spread(const PmeGpu*                  pmeGpu,
                                             && !writeGlobalOrSaveSplines);
         if (kernelParamsPtr->usePipeline != 0)
         {
-            int numStagesInPipeline = pmeCoordinateReceiverGpu->ppCommNumSenderRanks();
+            const int numStagesInPipeline = pmeCoordinateReceiverGpu->ppCommNumSenderRanks();
+
+            GpuEventSynchronizer* gridsReadyForSpread = &pmeGpu->archSpecific->pmeGridsReadyForSpread;
+            // Sync on grid zeroing is required except when GPU graphs are in use,
+            // In which case the sync is already present through the zeroing being
+            // explicitly included in the graph
+            if (!useMdGpuGraph)
+            {
+                gridsReadyForSpread->markEvent(pmeGpu->archSpecific->pmeStream_);
+                gridsReadyForSpread->setConsumptionLimits(numStagesInPipeline, numStagesInPipeline);
+            }
 
             for (int i = 0; i < numStagesInPipeline; i++)
             {
@@ -1859,16 +1868,20 @@ void pme_gpu_spread(const PmeGpu*                  pmeGpu,
 
                 wallcycle_start(wcycle, WallCycleCounter::LaunchGpuPme);
 
+                DeviceStream* launchStream = pmeCoordinateReceiverGpu->ppCommStream(senderRank);
+                if (!useMdGpuGraph)
+                {
+                    gridsReadyForSpread->enqueueWaitEvent(*launchStream);
+                }
                 // set kernel configuration options specific to this stage of the pipeline
                 std::tie(kernelParamsPtr->pipelineAtomStart, kernelParamsPtr->pipelineAtomEnd) =
                         pmeCoordinateReceiverGpu->ppCommAtomRange(senderRank);
-                const int blockCount       = static_cast<int>(std::ceil(
+                const int blockCount = static_cast<int>(std::ceil(
                         static_cast<float>(kernelParamsPtr->pipelineAtomEnd - kernelParamsPtr->pipelineAtomStart)
                         / atomsPerBlock));
-                auto      dimGrid          = pmeGpuCreateGrid(pmeGpu, blockCount);
-                config.gridSize[0]         = dimGrid.first;
-                config.gridSize[1]         = dimGrid.second;
-                DeviceStream* launchStream = pmeCoordinateReceiverGpu->ppCommStream(senderRank);
+                auto      dimGrid    = pmeGpuCreateGrid(pmeGpu, blockCount);
+                config.gridSize[0]   = dimGrid.first;
+                config.gridSize[1]   = dimGrid.second;
 
 
 #if c_canEmbedBuffers

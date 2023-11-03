@@ -722,7 +722,7 @@ PairlistSet::PairlistSet(const PairlistParams& pairlistParams) :
             gpuLists_.emplace_back(gmx::PinningPolicy::CannotBePinned);
         }
     }
-    if (params_.haveFep)
+    if (params_.haveFep_)
     {
         fepLists_.resize(numLists);
 
@@ -750,7 +750,7 @@ static void print_nblist_statistics(FILE*                   fp,
                                     const Nbnxm::GridSet&   gridSet,
                                     const real              rl)
 {
-    const Grid&             grid = gridSet.grids()[0];
+    const Grid&             grid = gridSet.grid(0);
     const Grid::Dimensions& dims = grid.dimensions();
 
     fprintf(fp, "nbl nci %zu ncj %d\n", nbl.ci.size(), nbl.ncjInUse);
@@ -810,7 +810,7 @@ static void print_nblist_statistics(FILE*                   fp,
                                     const Nbnxm::GridSet&   gridSet,
                                     const real              rl)
 {
-    const Grid&             grid = gridSet.grids()[0];
+    const Grid&             grid = gridSet.grid(0);
     const Grid::Dimensions& dims = grid.dimensions();
 
     fprintf(fp,
@@ -1292,7 +1292,7 @@ struct JListRanges
 {
     /*! \brief Constructs a j-list range from \p cjList with the given index range */
     template<typename JClusterListType>
-    JListRanges(int cjIndexStart, int cjIndexEnd, const JClusterListType& cjList);
+    JListRanges(int indexStart, int indexEnd, const JClusterListType& cjList);
 
     int cjIndexStart; //!< The start index in the j-list
     int cjIndexEnd;   //!< The end index in the j-list
@@ -1303,19 +1303,19 @@ struct JListRanges
 
 #ifndef DOXYGEN
 template<typename JClusterListType>
-JListRanges::JListRanges(int cjIndexStart, int cjIndexEnd, const JClusterListType& cjList) :
-    cjIndexStart(cjIndexStart), cjIndexEnd(cjIndexEnd)
+JListRanges::JListRanges(int indexStart, int indexEnd, const JClusterListType& cjList) :
+    cjIndexStart(indexStart), cjIndexEnd(indexEnd)
 {
-    GMX_ASSERT(cjIndexEnd > cjIndexStart, "JListRanges should only be called with non-empty lists");
+    GMX_ASSERT(indexEnd > indexStart, "JListRanges should only be called with non-empty lists");
 
-    cjFirst = cjList.cj(cjIndexStart);
-    cjLast  = cjList.cj(cjIndexEnd - 1);
+    cjFirst = cjList.cj(indexStart);
+    cjLast  = cjList.cj(indexEnd - 1);
 
     /* Determine how many contiguous j-cells we have starting
      * from the first i-cell. This number can be used to directly
      * calculate j-cell indices for excluded atoms.
      */
-    numDirect = numContiguousJClusters(cjIndexStart, cjIndexEnd, cjList);
+    numDirect = numContiguousJClusters(indexStart, indexEnd, cjList);
 }
 #endif // !DOXYGEN
 
@@ -2559,7 +2559,7 @@ static void get_nsubpair_target(const Nbnxm::GridSet&     gridSet,
      */
     const int nsubpair_target_min = 36;
 
-    const Grid& grid = gridSet.grids()[0];
+    const Grid& grid = gridSet.grid(0);
 
     /* We don't need to balance list sizes if:
      * - We didn't request balancing.
@@ -3201,7 +3201,7 @@ static void nbnxn_make_pairlist_part(const Nbnxm::GridSet&   gridSet,
         const real rlistFep = nbl->rlist + effective_buffer_1x1_vs_MxN(iGrid, jGrid);
 
         /* Make sure we don't go above the maximum allowed cut-off distance */
-        rl_fep2 = std::min(gmx::square(rlistFep), max_cutoff2(gridSet.domainSetup().pbcType, box));
+        rl_fep2 = std::min(gmx::square(rlistFep), max_cutoff2(gridSet.domainSetup().pbcType_, box));
 
         if (debug)
         {
@@ -3228,7 +3228,7 @@ static void nbnxn_make_pairlist_part(const Nbnxm::GridSet&   gridSet,
         /* Check if we need periodicity shifts.
          * Without PBC or with domain decomposition we don't need them.
          */
-        if (d >= numPbcDimensions(gridSet.domainSetup().pbcType)
+        if (d >= numPbcDimensions(gridSet.domainSetup().pbcType_)
             || gridSet.domainSetup().haveMultipleDomainsPerDim[d])
         {
             shp[d] = 0;
@@ -3932,7 +3932,7 @@ static void sort_sci(NbnxnPairlistGpu* nbl)
 static Range<int> getIZoneRange(const Nbnxm::GridSet::DomainSetup& domainSetup,
                                 const InteractionLocality          locality)
 {
-    if (domainSetup.doTestParticleInsertion)
+    if (domainSetup.doTestParticleInsertion_)
     {
         /* With TPI we do grid 1, the inserted molecule, versus grid 0, the rest */
         return { 1, 2 };
@@ -4019,7 +4019,7 @@ void PairlistSet::constructPairlists(gmx::InteractionLocality      locality,
             clear_pairlist(&gpuLists_[th]);
         }
 
-        if (params_.haveFep)
+        if (params_.haveFep_)
         {
             clear_pairlist_fep(fepLists_[th].get());
         }
@@ -4033,20 +4033,23 @@ void PairlistSet::constructPairlists(gmx::InteractionLocality      locality,
 
     for (const int iZone : iZoneRange)
     {
-        const Grid& iGrid = gridSet.grids()[iZone];
+        const Grid& iGrid = gridSet.grid(iZone);
 
         const auto jZoneRange = getJZoneRange(ddZones, locality, iZone);
 
         for (int jZone : jZoneRange)
         {
-            const Grid& jGrid = gridSet.grids()[jZone];
+            const Grid& jGrid = gridSet.grid(jZone);
 
             if (debug)
             {
                 fprintf(debug, "ns search grid %d vs %d\n", iZone, jZone);
             }
 
-            searchCycleCounting->start(enbsCCsearch);
+            if (searchCycleCounting)
+            {
+                searchCycleCounting->start(enbsCCsearch);
+            }
 
             const int ci_block =
                     get_ci_block_size(iGrid, gridSet.domainSetup().haveMultipleDomains, numLists);
@@ -4128,14 +4131,20 @@ void PairlistSet::constructPairlists(gmx::InteractionLocality      locality,
                 }
                 GMX_CATCH_ALL_AND_EXIT_WITH_FATAL_ERROR
             }
-            searchCycleCounting->stop(enbsCCsearch);
+            if (searchCycleCounting)
+            {
+                searchCycleCounting->stop(enbsCCsearch);
+            }
 
             int np_tot = 0;
             int np_noq = 0;
             int np_hlj = 0;
             for (int th = 0; th < numLists; th++)
             {
-                inc_nrnb(nrnb, eNR_NBNXN_DIST2, searchWork[th].ndistc);
+                if (nrnb)
+                {
+                    inc_nrnb(nrnb, eNR_NBNXN_DIST2, searchWork[th].ndistc);
+                }
 
                 if (isCpuType_)
                 {
@@ -4162,11 +4171,17 @@ void PairlistSet::constructPairlists(gmx::InteractionLocality      locality,
             {
                 GMX_ASSERT(!isCpuType_, "Can only combine GPU lists");
 
-                searchCycleCounting->start(enbsCCcombine);
+                if (searchCycleCounting)
+                {
+                    searchCycleCounting->start(enbsCCcombine);
+                }
 
                 combine_nblists(gmx::constArrayRefFromArray(&gpuLists_[1], numLists - 1), &gpuLists_[0]);
 
-                searchCycleCounting->stop(enbsCCcombine);
+                if (searchCycleCounting)
+                {
+                    searchCycleCounting->stop(enbsCCcombine);
+                }
             }
         }
     }
@@ -4336,7 +4351,7 @@ void nonbonded_verlet_t::constructPairlist(const InteractionLocality iLocality,
                                            int64_t                   step,
                                            t_nrnb*                   nrnb) const
 {
-    pairlistSets_->construct(iLocality, pairSearch_.get(), nbat.get(), exclusions, step, nrnb);
+    pairlistSets_->construct(iLocality, pairSearch_.get(), nbat_.get(), exclusions, step, nrnb);
 
     if (useGpu())
     {
@@ -4344,7 +4359,7 @@ void nonbonded_verlet_t::constructPairlist(const InteractionLocality iLocality,
          *
          * NOTE: The launch overhead is currently not timed separately
          */
-        Nbnxm::gpu_init_pairlist(gpu_nbv, pairlistSets().pairlistSet(iLocality).gpuList(), iLocality);
+        Nbnxm::gpu_init_pairlist(gpuNbv_, pairlistSets().pairlistSet(iLocality).gpuList(), iLocality);
     }
 
     /* With FEP we might need to check that we have all perturbed inclusions within rlist */

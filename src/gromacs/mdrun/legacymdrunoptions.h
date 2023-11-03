@@ -220,7 +220,8 @@ public:
           FALSE,
           etSTR,
           { &userGpuTaskAssignment },
-          "List of GPU device IDs, mapping each PP task on each node to a device" },
+          "List of GPU device IDs, mapping each task on a node to a device. "
+          "Tasks include PP and PME (if present)." },
         { "-ddcheck",
           FALSE,
           etBOOL,
@@ -293,7 +294,8 @@ public:
           FALSE,
           etBOOL,
           { &mdrunOptions.reproducible },
-          "Try to avoid optimizations that affect binary reproducibility" },
+          "Avoid optimizations that affect binary reproducibility; "
+          "this can significantly reduce performance" },
         { "-cpt",
           FALSE,
           etREAL,

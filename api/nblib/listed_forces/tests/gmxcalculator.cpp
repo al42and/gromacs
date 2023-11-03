@@ -75,15 +75,13 @@ ListedGmxCalculator::ListedGmxCalculator(const InteractionDefinitions& idefs,
                shiftBuffer),
     virialProxy(forceBuffer, true),
     forceOutputs(shiftProxy, true, virialProxy),
-    enerd(1, 0),
+    enerd(1, nullptr),
     lambdaBuffer(42) // values unused; just initialized with something larger than the number of enum types in FreeEnergyPerturbationCouplingType
 {
     idef_->ilsort = ilsortNO_FE;
 
     ListedForces::InteractionSelection interactionSelection = ListedForces::interactionSelectionAll();
 
-    // no foreign lambdas
-    fepvals_.n_lambda = 0;
     // no distance restraints
     disres_.nres   = 0;
     fcdata_.disres = &disres_;
@@ -159,7 +157,6 @@ void ListedGmxCalculator::compute(gmx::ArrayRef<const gmx::RVec> x,
 
     gmxListedForces_->calculate(wcycle.get(),
                                 box_.legacyMatrix(),
-                                &fepvals_,
                                 &cr,
                                 nullptr,
                                 { x.data(), x.data() + x.size(), x.data() + x.size() },

@@ -153,6 +153,11 @@ static int fillSupportedSubGroupSizes(const cl_device_id devId,
     {
         case DeviceVendor::Amd:
         {
+            if (getenv("GMX_OCL_FORCE_AMD_WAVEFRONT64"))
+            {
+                result[0] = 64;
+                return 1;
+            }
             cl_int status;
             // Try to query the device:
 #ifdef CL_DEVICE_WAVEFRONT_WIDTH_AMD
@@ -191,12 +196,13 @@ static int fillSupportedSubGroupSizes(const cl_device_id devId,
             // Try to query the device:
 #ifdef CL_DEVICE_SUB_GROUP_SIZES_INTEL
             std::vector<size_t> subGroupSizesTemp(resultCapacity);
-            size_t              numSubGroupSizes;
-            cl_int              status = clGetDeviceInfo(devId,
+            size_t              subGroupSizesTempOutputInBytes;
+            cl_int              status           = clGetDeviceInfo(devId,
                                             CL_DEVICE_SUB_GROUP_SIZES_INTEL,
-                                            subGroupSizesTemp.size(),
+                                            subGroupSizesTemp.size() * sizeof(size_t),
                                             subGroupSizesTemp.data(),
-                                            &numSubGroupSizes);
+                                            &subGroupSizesTempOutputInBytes);
+            const size_t        numSubGroupSizes = subGroupSizesTempOutputInBytes / sizeof(size_t);
             if (status == CL_SUCCESS)
             {
                 GMX_RELEASE_ASSERT(static_cast<int>(numSubGroupSizes) <= resultCapacity,

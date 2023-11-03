@@ -72,6 +72,7 @@
 #include "gromacs/fileio/gmxfio.h"
 #include "gromacs/fileio/oenv.h"
 #include "gromacs/fileio/tpxio.h"
+#include "gromacs/fileio/trrio.h"
 #include "gromacs/gmxlib/network.h"
 #include "gromacs/gmxlib/nrnb.h"
 #include "gromacs/gpu_utils/device_stream_manager.h"
@@ -213,7 +214,7 @@ static DevelopmentFeatureFlags manageDevelopmentFeatures(const gmx::MDLogger& md
 
     if (getenv("GMX_CUDA_GRAPH") != nullptr)
     {
-        if (GMX_HAVE_CUDA_GRAPH_SUPPORT)
+        if (GMX_HAVE_GPU_GRAPH_SUPPORT)
         {
             devFlags.enableCudaGraphs = true;
             GMX_LOG(mdlog.warning)
@@ -226,12 +227,21 @@ static DevelopmentFeatureFlags manageDevelopmentFeatures(const gmx::MDLogger& md
         else
         {
             devFlags.enableCudaGraphs = false;
+            std::string errorReason;
+            if (GMX_GPU_CUDA)
+            {
+                errorReason = "the CUDA version in use is below the minimum requirement (11.1)";
+            }
+            else
+            {
+                errorReason = "GROMACS is built without CUDA";
+            }
             GMX_LOG(mdlog.warning)
                     .asParagraph()
-                    .appendText(
-                            "GMX_CUDA_GRAPH environment variable is detected, "
-                            "but the CUDA version in use is below the minumum requirement (11.1). "
-                            "CUDA Graphs will be disabled.");
+                    .appendTextFormatted(
+                            "GMX_CUDA_GRAPH environment variable is detected, but %s. GPU Graphs "
+                            "will be disabled.",
+                            errorReason.c_str());
         }
     }
 
@@ -535,7 +545,7 @@ static void prepare_verlet_scheme(FILE*                          fplog,
         VerletbufListSetup listSetup = verletbufGetSafeListSetup(listType);
 
         const real rlist_new = calcVerletBufferSize(
-                mtop, effectiveAtomDensity.value(), *ir, ir->nstlist, ir->nstlist - 1, -1, listSetup);
+                mtop, effectiveAtomDensity.value(), *ir, -1, ir->nstlist, ir->nstlist - 1, -1, listSetup);
 
         if (rlist_new != ir->rlist)
         {
@@ -806,7 +816,7 @@ static void finish_run(FILE*                     fplog,
     if (printReport)
     {
         auto* nbnxn_gpu_timings =
-                (nbv != nullptr && nbv->useGpu()) ? Nbnxm::gpu_get_timings(nbv->gpu_nbv) : nullptr;
+                (nbv != nullptr && nbv->useGpu()) ? Nbnxm::gpu_get_timings(nbv->gpuNbv()) : nullptr;
         gmx_wallclock_gpu_pme_t pme_gpu_timings = {};
 
         if (pme_gpu_task_enabled(pme))
@@ -927,6 +937,19 @@ int Mdrunner::mdrunner()
          */
         applyGlobalSimulationState(
                 *inputHolder_.get(), partialDeserializedTpr.get(), globalState.get(), inputrec.get(), &mtop);
+
+        static_assert(sc_trrMaxAtomCount == sc_checkpointMaxAtomCount);
+        if (mtop.natoms > sc_checkpointMaxAtomCount)
+        {
+            gmx_fatal(FARGS,
+                      "System has %d atoms, which is more than can be stored in checkpoint and trr "
+                      "files (max %" PRId64 ")",
+                      mtop.natoms,
+                      sc_checkpointMaxAtomCount);
+        }
+
+        // The XTC format has been updated to support up to 2^31-1 atoms, which is anyway the
+        // largest supported by GROMACS, so no need for any particular check here.
     }
 
     /* Check and update the hardware options for internal consistency */
@@ -952,6 +975,7 @@ int Mdrunner::mdrunner()
                     emulateGpuNonbonded,
                     canUseGpuForNonbonded,
                     gpuAccelerationOfNonbondedIsUseful(mdlog, *inputrec, GMX_THREAD_MPI, doRerun),
+                    mdrunOptions.reproducible,
                     hw_opt.nthreads_tmpi);
             useGpuForPme = decideWhetherToUseGpusForPmeWithThreadMpi(useGpuForNonbonded,
                                                                      pmeTarget,
@@ -1031,6 +1055,7 @@ int Mdrunner::mdrunner()
                 emulateGpuNonbonded,
                 canUseGpuForNonbonded,
                 gpuAccelerationOfNonbondedIsUseful(mdlog, *inputrec, !GMX_THREAD_MPI, doRerun),
+                mdrunOptions.reproducible,
                 gpusWereDetected);
         useGpuForPme    = decideWhetherToUseGpusForPme(useGpuForNonbonded,
                                                     pmeTarget,
@@ -1068,11 +1093,12 @@ int Mdrunner::mdrunner()
     // the task-deciding functions and will agree on the result
     // without needing to communicate.
     // The LBFGS minimizer, test-particle insertion, normal modes and shell dynamics don't support DD
+    const bool hasCustomParallelization =
+            (EI_TPI(inputrec->eI) || inputrec->eI == IntegrationAlgorithm::NM);
     const bool canUseDomainDecomposition =
-            !(inputrec->eI == IntegrationAlgorithm::LBFGS || EI_TPI(inputrec->eI)
-              || inputrec->eI == IntegrationAlgorithm::NM
-              || gmx_mtop_particletype_count(mtop)[ParticleType::Shell] > 0);
-    GMX_RELEASE_ASSERT(!PAR(cr) || canUseDomainDecomposition,
+            (inputrec->eI != IntegrationAlgorithm::LBFGS && !hasCustomParallelization
+             && gmx_mtop_particletype_count(mtop)[ParticleType::Shell] == 0);
+    GMX_RELEASE_ASSERT(!PAR(cr) || hasCustomParallelization || canUseDomainDecomposition,
                        "A parallel run should not arrive here without DD support");
 
     int useDDWithSingleRank = -1;
@@ -1118,10 +1144,12 @@ int Mdrunner::mdrunner()
         setupNotifier.notify(*inputrec->internalParameters);
     }
 
-    // Let MdModules know the .tpr filename
+    // Let MdModules know the .tpr input and .edr output filenames
     {
         gmx::MdRunInputFilename mdRunInputFilename = { ftp2fn(efTPR, filenames.size(), filenames.data()) };
         setupNotifier.notify(mdRunInputFilename);
+        gmx::EdrOutputFilename edrOutputFilename = { ftp2fn(efEDR, filenames.size(), filenames.data()) };
+        setupNotifier.notify(edrOutputFilename);
     }
 
     if (fplog != nullptr)
@@ -1133,7 +1161,7 @@ int Mdrunner::mdrunner()
     if (SIMMAIN(cr))
     {
         /* In rerun, set velocities to zero if present */
-        if (doRerun && ((globalState->flags & enumValueToBitMask(StateEntry::V)) != 0))
+        if (doRerun && globalState->hasEntry(StateEntry::V))
         {
             // rerun does not use velocities
             GMX_LOG(mdlog.info)
@@ -1141,11 +1169,11 @@ int Mdrunner::mdrunner()
                     .appendText(
                             "Rerun trajectory contains velocities. Rerun does only evaluate "
                             "potential energy and forces. The velocities will be ignored.");
-            for (int i = 0; i < globalState->natoms; i++)
+            for (int i = 0; i < globalState->numAtoms(); i++)
             {
                 clear_rvec(globalState->v[i]);
             }
-            globalState->flags &= ~enumValueToBitMask(StateEntry::V);
+            globalState->setFlags(globalState->flags() & ~enumValueToBitMask(StateEntry::V));
         }
 
         /* now make sure the state is initialized and propagated */
@@ -1441,6 +1469,9 @@ int Mdrunner::mdrunner()
     else
     {
         /* PME, if used, is done on all nodes with 1D decomposition */
+        cr->mpi_comm_mygroup = cr->mpiDefaultCommunicator;
+        cr->mpi_comm_mysim   = cr->mpiDefaultCommunicator;
+
         cr->nnodes     = cr->sizeOfDefaultCommunicator;
         cr->sim_nodeid = cr->rankInDefaultCommunicator;
         cr->nodeid     = cr->rankInDefaultCommunicator;
@@ -1728,6 +1759,7 @@ int Mdrunner::mdrunner()
         setupNotifier.notify(mtop);
         setupNotifier.notify(inputrec->pbcType);
         setupNotifier.notify(SimulationTimeStep{ inputrec->delta_t });
+
         /* Initiate forcerecord */
         fr                 = std::make_unique<t_forcerec>();
         fr->forceProviders = mdModules_->initForceProviders();
@@ -1848,7 +1880,14 @@ int Mdrunner::mdrunner()
             /* Make molecules whole at start of run */
             if (fr->pbcType != PbcType::No)
             {
-                do_pbc_first_mtop(fplog, inputrec->pbcType, box, &mtop, globalState->x.rvec_array());
+                do_pbc_first_mtop(fplog,
+                                  inputrec->pbcType,
+                                  ir_haveBoxDeformation(*inputrec),
+                                  inputrec->deform,
+                                  box,
+                                  &mtop,
+                                  globalState->x,
+                                  globalState->v);
             }
             if (vsite)
             {
@@ -2095,7 +2134,7 @@ int Mdrunner::mdrunner()
 
         /* Energy terms and groups */
         gmx_enerdata_t enerd(mtop.groups.groups[SimulationAtomGroupType::EnergyOutput].size(),
-                             inputrec->fepvals->n_lambda);
+                             &inputrec->fepvals->all_lambda);
 
         // cos acceleration is only supported by md, but older tpr
         // files might still combine it with other integrators
@@ -2106,6 +2145,7 @@ int Mdrunner::mdrunner()
         gmx_ekindata_t ekind(gmx::constArrayRefFromArray(inputrec->opts.ref_t, inputrec->opts.ngtc),
                              inputrec->ensembleTemperatureSetting,
                              inputrec->ensembleTemperature,
+                             fr->haveBoxDeformation,
                              inputrec->cos_accel,
                              gmx_omp_nthreads_get(ModuleMultiThread::Update));
 
@@ -2133,7 +2173,7 @@ int Mdrunner::mdrunner()
             makeBondedLinks(cr->dd, mtop, fr->atomInfoForEachMoleculeBlock);
         }
 
-        if (runScheduleWork.simulationWork.useGpuFBufferOps)
+        if (runScheduleWork.simulationWork.useGpuFBufferOpsWhenAllowed)
         {
             fr->gpuForceReduction[gmx::AtomLocality::Local] = std::make_unique<gmx::GpuForceReduction>(
                     deviceStreamManager->context(),

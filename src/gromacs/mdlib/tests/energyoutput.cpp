@@ -192,7 +192,7 @@ public:
     TestReferenceChecker checker_;
 
     EnergyOutputTest() :
-        ekindata_(tcgInit_, EnsembleTemperatureSetting::NotAvailable, -1.0_real, cosAccel_, 1),
+        ekindata_(tcgInit_, EnsembleTemperatureSetting::NotAvailable, -1.0_real, false, cosAccel_, 1),
         logFilename_(fileManager_.getTemporaryFilePath(".log").u8string()),
         edrFilename_(fileManager_.getTemporaryFilePath(".edr").u8string()),
         log_(std::fopen(logFilename_.c_str(), "w")),
@@ -333,7 +333,7 @@ public:
 
         // Group pairs
         enerdata_ = std::make_unique<gmx_enerdata_t>(
-                mtop_.groups.groups[SimulationAtomGroupType::EnergyOutput].size(), 0);
+                mtop_.groups.groups[SimulationAtomGroupType::EnergyOutput].size(), nullptr);
 
         // Kinetic energy and related data
         ekindata_.tcstat.resize(mtop_.groups.groups[SimulationAtomGroupType::TemperatureCoupling].size());
