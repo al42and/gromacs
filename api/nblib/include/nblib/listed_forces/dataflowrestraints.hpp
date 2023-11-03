@@ -51,25 +51,26 @@
 
 #include <vector>
 
+#include "gromacs/utility/arrayref.h"
+
 #include "nblib/listed_forces/dataflow.hpp"
 #include "nblib/listed_forces/kernels.hpp"
 #include "nblib/listed_forces/positionrestraints.hpp"
 #include "nblib/listed_forces/traits.h"
-#include "nblib/util/util.hpp"
 #include "nblib/pbc.hpp"
-#include "gromacs/utility/arrayref.h"
+#include "nblib/util/util.hpp"
 
 namespace nblib
 {
 
 template<class OneCenterType, class StackVector, class Lambda, class Virial>
 HOST_DEVICE_INLINE auto computeOneCenter(const OneCenterType& parameterA,
-                                          const OneCenterType& /* parameterB */,
-                                          const StackVector& dx,
-                                          const StackVector& rdist,
-                                          const Lambda /* lambda */,
-                                          StackVector* fi,
-                                          Virial* virial)
+                                         const OneCenterType& /* parameterB */,
+                                         const StackVector& dx,
+                                         const StackVector& rdist,
+                                         const Lambda /* lambda */,
+                                         StackVector* fi,
+                                         Virial*      virial)
 {
     using ValueType    = VectorValueType_t<StackVector>;
     ValueType   energy = 0;
@@ -95,21 +96,21 @@ HOST_DEVICE_INLINE auto computeOneCenter(const OneCenterType& parameterA,
 }
 
 template<class OneCenterType, class MemVector, class Lambda, class Buffer, class Virial, class Pbc>
-HOST_DEVICE_INLINE auto dispatchRestraints(IndexArray<2>        index,
-                                            const OneCenterType* bondInstancesA,
-                                            const OneCenterType* bondInstancesB,
-                                            const MemVector*     x,
-                                            Lambda               lambda,
-                                            Buffer*              forces,
-                                            Virial*              virials,
-                                            const Pbc&           pbc,
-                                            const Box&           box,
-                                            PbcType              pbcType,
-                                            RefCoordScaling      refcoord_scaling,
-                                            StackVec3<VectorValueType_t<MemVector>> com)
+HOST_DEVICE_INLINE auto dispatchRestraints(IndexArray<2>                           index,
+                                           const OneCenterType*                    bondInstancesA,
+                                           const OneCenterType*                    bondInstancesB,
+                                           const MemVector*                        x,
+                                           Lambda                                  lambda,
+                                           Buffer*                                 forces,
+                                           Virial*                                 virials,
+                                           const Pbc&                              pbc,
+                                           const Box&                              box,
+                                           PbcType                                 pbcType,
+                                           RefCoordScaling                         refcoord_scaling,
+                                           StackVec3<VectorValueType_t<MemVector>> com)
 {
     using ValueType = VectorValueType_t<MemVector>;
-    using Vec = StackVec3<ValueType>;
+    using Vec       = StackVec3<ValueType>;
     KernelEnergy<ValueType> energy;
 
     int i  = index[0];
@@ -188,8 +189,7 @@ auto reduceRestraints(const ListedInteractionData&   interactions,
 
     // calculate one bond type
     auto computeForceType = [forces, x, virials, &energies, &pbc, box, refcoord_scaling, pbcType, com](
-                                    const auto& interactionElement)
-    {
+                                    const auto& interactionElement) {
         using InteractionType = typename std::decay_t<decltype(interactionElement)>::type;
         gmx::ArrayRef<const InteractionIndex<InteractionType>> indices(interactionElement.indices);
         gmx::ArrayRef<const InteractionType> parametersA(interactionElement.parametersA);

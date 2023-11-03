@@ -208,7 +208,7 @@ bondKernel(T dr, const G96BondType& bondA, const G96BondType& bondB, L lambda)
  */
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T>
-morseScalarForce(T kA, T /*kB*/, T betaA, T /*betaB*/, T xA, T /*xB*/, T x, NoFepLambdaType /*lambda*/)
+                                   morseScalarForce(T kA, T /*kB*/, T betaA, T /*betaB*/, T xA, T /*xB*/, T x, NoFepLambdaType /*lambda*/)
 {
     T exponent = std::exp(-betaA * (x - xA));
     T omexp    = T(1.0) - exponent;
@@ -299,7 +299,7 @@ FENEScalarForce(T kA, T /*kB*/, T xA, T /*xB*/, T x, NoFepLambdaType /*lambda*/)
 
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T>
-FENEScalarForce(T /*kA*/, T /*kB*/, T /*xA*/, T /*xB*/, T /*x*/, T /*lambda*/)
+        FENEScalarForce(T /*kA*/, T /*kB*/, T /*xA*/, T /*xB*/, T /*x*/, T /*lambda*/)
 {
     printf("FENE FEP not implemented\n");
     return util::make_tuple(T(0), T(0), T(0));
@@ -329,7 +329,7 @@ bondKernel(T dr, const FENEBondType& bondA, const FENEBondType& bondB, L lambda)
  */
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T>
-cubicScalarForce(T kcA, T /*kcB*/, T kqA, T /*kqB*/, T xA, T /*xB*/, T x, NoFepLambdaType /*lambda*/)
+                                   cubicScalarForce(T kcA, T /*kcB*/, T kqA, T /*kqB*/, T xA, T /*xB*/, T x, NoFepLambdaType /*lambda*/)
 {
     T dx = x - xA;
 
@@ -344,7 +344,7 @@ cubicScalarForce(T kcA, T /*kcB*/, T kqA, T /*kqB*/, T xA, T /*xB*/, T x, NoFepL
 
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T>
-cubicScalarForce(T /*kcA*/, T /*kcB*/, T /*kqA*/, T /*kqB*/, T /*xA*/, T /*xB*/, T /*x*/, T /*lambda*/)
+                                   cubicScalarForce(T /*kcA*/, T /*kcB*/, T /*kqA*/, T /*kqB*/, T /*xA*/, T /*xB*/, T /*x*/, T /*lambda*/)
 {
     printf("Cubic FEP not implemented\n");
     return util::make_tuple(T(0), T(0), T(0));
@@ -403,7 +403,7 @@ halfAttractiveScalarForce(T kA, T /*kb*/, T xA, T /*xB*/, T x, NoFepLambdaType /
  */
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T>
-halfAttractiveScalarForce(T kA, T kB, T xA, T xB, T x, T lambda)
+                                   halfAttractiveScalarForce(T kA, T kB, T xA, T xB, T x, T lambda)
 {
     T L1 = T(1) - lambda;
     T kk = L1 * kA + lambda * kB;
@@ -442,7 +442,7 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto bondKernel(T                            
  */
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T, T>
-pairLJScalarForce(C6 c6A, C6 /*c6B*/, C12 c12A, C12 /*c12B*/, T qiqj, T r, NoFepLambdaType /*lambda*/)
+                                   pairLJScalarForce(C6 c6A, C6 /*c6B*/, C12 c12A, C12 /*c12B*/, T qiqj, T r, NoFepLambdaType /*lambda*/)
 {
     T rinv  = T(1) / r;
     T rinv2 = rinv * rinv;
@@ -463,7 +463,7 @@ pairLJScalarForce(C6 c6A, C6 /*c6B*/, C12 c12A, C12 /*c12B*/, T qiqj, T r, NoFep
 
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T, T>
-pairLJScalarForce(C6 /*c6A*/, C6 /*c6B*/, C12 /*c12A*/, C12 /*c12B*/, T /*qiqj*/, T /*r*/, T /*lambda*/)
+                                   pairLJScalarForce(C6 /*c6A*/, C6 /*c6B*/, C12 /*c12A*/, C12 /*c12B*/, T /*qiqj*/, T /*r*/, T /*lambda*/)
 {
     printf("PairLJ FEP not implemented\n");
     return util::make_tuple(T(0), T(0), T(0), T(0));
@@ -482,7 +482,8 @@ template<class T, class L>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE auto
 bondKernel(T dr, T /*qiqj*/, const PairLJChargeType& bondA, const PairLJChargeType& bondB, L lambda)
 {
-    return pairLJScalarForce(bondA.c6(), bondB.c6(), bondA.c12(), bondB.c12(), bondA.qi() * bondA.qj() * bondA.ff(), dr, lambda);
+    return pairLJScalarForce(
+            bondA.c6(), bondB.c6(), bondA.c12(), bondB.c12(), bondA.qi() * bondA.qj() * bondA.ff(), dr, lambda);
 }
 
 template<class T, class L>
@@ -523,7 +524,7 @@ linearAnglesScalarForce(T kA, T /*kb*/, T aA, T /*aB*/, T angle, NoFepLambdaType
 
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T, T>
-linearAnglesScalarForce(T /*kA*/, T /*kb*/, T /*aA*/, T /*aB*/, T /*angle*/, T /*lambda*/)
+        linearAnglesScalarForce(T /*kA*/, T /*kb*/, T /*aA*/, T /*aB*/, T /*angle*/, T /*lambda*/)
 {
     printf("Linear angles FEP not implemented\n");
     return util::make_tuple(T(0), T(0), T(0), T(0));
@@ -561,11 +562,11 @@ threeCenterKernel(T dr, const G96Angle& angleA, const G96Angle& angleB, L lambda
 {
     auto costheta = std::cos(dr);
     auto feTuple  = g96ScalarForce(angleA.forceConstant(),
-                                   angleB.forceConstant(),
-                                   angleA.equilConstant(),
-                                   angleB.equilConstant(),
-                                   costheta,
-                                   lambda);
+                                  angleB.forceConstant(),
+                                  angleA.equilConstant(),
+                                  angleB.equilConstant(),
+                                  costheta,
+                                  lambda);
 
     // The above kernel call effectively computes the derivative of the potential with respect to
     // cos(theta). However, we need the derivative with respect to theta. We use this extra
@@ -753,7 +754,7 @@ threeCenterKernel(T theta, const RestrictedAngle& angleA, const RestrictedAngle&
 
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T>
-properDihedralForce(T cpA, T /*cpB*/, T phiA, T /*phiB*/, int multiplicity, T phi, NoFepLambdaType /*lambda*/)
+                                   properDihedralForce(T cpA, T /*cpB*/, T phiA, T /*phiB*/, int multiplicity, T phi, NoFepLambdaType /*lambda*/)
 {
     T deltaPhi = multiplicity * phi - phiA;
     T force    = -cpA * multiplicity * std::sin(deltaPhi);
@@ -764,7 +765,7 @@ properDihedralForce(T cpA, T /*cpB*/, T phiA, T /*phiB*/, int multiplicity, T ph
 
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T>
-properDihedralForce(T /*cpA*/, T /*cpB*/, T /*phiA*/, T /*phiB*/, int /*mult*/, T /*phi*/, T /*lambda*/)
+                                   properDihedralForce(T /*cpA*/, T /*cpB*/, T /*phiA*/, T /*phiB*/, int /*mult*/, T /*phi*/, T /*lambda*/)
 {
     printf("ProperDihedral FEP not implemented\n");
     return util::make_tuple(T(0), T(0), T(0));
@@ -786,8 +787,10 @@ fourCenterKernel(T phi, const ProperDihedral& pDihA, const ProperDihedral& pDihB
 
 //! \brief Computes and returns the improper proper dihedral force
 template<class T, class L>
-HOST_DEVICE_FUN HOST_DEVICE_INLINE auto
-fourCenterKernel(T phi, const ImproperProperDihedral& pDihA, const ImproperProperDihedral& pDihB, L lambda)
+HOST_DEVICE_FUN HOST_DEVICE_INLINE auto fourCenterKernel(T                             phi,
+                                                         const ImproperProperDihedral& pDihA,
+                                                         const ImproperProperDihedral& pDihB,
+                                                         L                             lambda)
 {
     return properDihedralForce(pDihA.forceConstant(),
                                pDihB.forceConstant(),
@@ -908,7 +911,7 @@ improperDihedralForce(T cpA, T /*cpB*/, T phiA, T /*phiB*/, T phi, NoFepLambdaTy
 
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T>
-improperDihedralForce(T /*cpA*/, T /*cpB*/, T /*phiA*/, T /*phiB*/, int /*mult*/, T /*phi*/, T /*lambda*/)
+                                   improperDihedralForce(T /*cpA*/, T /*cpB*/, T /*phiA*/, T /*phiB*/, int /*mult*/, T /*phi*/, T /*lambda*/)
 {
     printf("ImproperDihedral FEP not implemented\n");
     return util::make_tuple(T(0), T(0), T(0));
@@ -925,10 +928,10 @@ fourCenterKernel(T phi, const ImproperDihedral& iDihA, const ImproperDihedral& i
 
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T>
-ryckaertBellemanForce(T       phi,
-                      const T parmA[RyckaertBellemanDihedral::RbNumParameters],
-                      const T /*parmB*/[RyckaertBellemanDihedral::RbNumParameters],
-                      NoFepLambdaType /*lambda*/)
+                                   ryckaertBellemanForce(T       phi,
+                                                         const T parmA[RyckaertBellemanDihedral::RbNumParameters],
+                                                         const T /*parmB*/[RyckaertBellemanDihedral::RbNumParameters],
+                                                         NoFepLambdaType /*lambda*/)
 {
     /* Change to polymer convention */
     T localPhi = (phi < T(0)) ? (phi += M_PI) : (phi -= M_PI);
@@ -952,10 +955,10 @@ ryckaertBellemanForce(T       phi,
 
 template<class T>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE util::tuple<T, T, T>
-ryckaertBellemanForce(T /*phi*/,
-                      const T /*parmA*/[RyckaertBellemanDihedral::RbNumParameters],
-                      const T /*parmB*/[RyckaertBellemanDihedral::RbNumParameters],
-                      T /*lambda*/)
+                                   ryckaertBellemanForce(T /*phi*/,
+                                                         const T /*parmA*/[RyckaertBellemanDihedral::RbNumParameters],
+                                                         const T /*parmB*/[RyckaertBellemanDihedral::RbNumParameters],
+                                                         T /*lambda*/)
 {
     printf("Ryckaert Belleman FEP not implemented\n");
     return util::make_tuple(T(0), T(0), T(0));

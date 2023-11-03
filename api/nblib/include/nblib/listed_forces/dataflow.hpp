@@ -50,12 +50,13 @@
 #define NBLIB_LISTEDFORCES_DATAFLOW_HPP
 
 #include "gromacs/utility/arrayref.h"
+
 #include "nblib/listed_forces/definitions.h"
 #include "nblib/listed_forces/kernels.hpp"
 #include "nblib/listed_forces/traits.h"
+#include "nblib/pbc.hpp"
 #include "nblib/util/tuple.hpp"
 #include "nblib/util/util.hpp"
-#include "nblib/pbc.hpp"
 
 namespace nblib
 {
@@ -85,9 +86,9 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto computeTwoCenter(const TwoCenterType& pa
 }
 
 template<class TwoCenterType, class StackVector, class Lambda>
-HOST_DEVICE_FUN HOST_DEVICE_INLINE auto computeTwoCenter(const TwoCenterType& parametersA,
-                                                         const TwoCenterType& parametersB,
-                                                         const StackVector&   dx,
+HOST_DEVICE_FUN HOST_DEVICE_INLINE auto computeTwoCenter(const TwoCenterType&           parametersA,
+                                                         const TwoCenterType&           parametersB,
+                                                         const StackVector&             dx,
                                                          VectorValueType_t<StackVector> q,
                                                          Lambda                         lambda,
                                                          StackVector*                   fi,
@@ -130,8 +131,7 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto computeTwoCenter(const TwoCenterType& pa
  * @param[in]    pbc             pbc object to use for calculating distances
  * @return                       packed interaction energies (ePot, eVdW, eCoul, dVdl)
  */
-template<class TwoCenterType, class MemVector, class Lambda, class Buffer, class ShiftForce, class Pbc,
-         std::enable_if_t<HasCharge<TwoCenterType>{}, int> = 0>
+template<class TwoCenterType, class MemVector, class Lambda, class Buffer, class ShiftForce, class Pbc, std::enable_if_t<HasCharge<TwoCenterType>{}, int> = 0>
 HOST_DEVICE_FUN HOST_INLINE auto dispatchInteraction(IndexArray<3>        index,
                                                      const TwoCenterType* bondInstancesA,
                                                      const TwoCenterType* bondInstancesB,
@@ -189,8 +189,7 @@ HOST_DEVICE_FUN HOST_INLINE auto dispatchInteraction(IndexArray<3>        index,
  * \param[in] pbc Object used for computing distances accounting for PBC's
  * \return Computed kernel energies
  */
-template<class TwoCenterType, class MemVector, class Lambda, class Buffer, class ShiftForce, class Pbc,
-         std::enable_if_t<!HasCharge<TwoCenterType>{}, int> = 0>
+template<class TwoCenterType, class MemVector, class Lambda, class Buffer, class ShiftForce, class Pbc, std::enable_if_t<!HasCharge<TwoCenterType>{}, int> = 0>
 HOST_DEVICE_FUN HOST_INLINE auto dispatchInteraction(IndexArray<3>        index,
                                                      const TwoCenterType* bondInstancesA,
                                                      const TwoCenterType* bondInstancesB,
@@ -228,7 +227,7 @@ HOST_DEVICE_FUN HOST_INLINE auto dispatchInteraction(IndexArray<3>        index,
 
     if (sIdx != gmx::c_centralShiftIndex)
     {
-        addForce(shiftForces + sIdx,  fi);
+        addForce(shiftForces + sIdx, fi);
         addForce(shiftForces + gmx::c_centralShiftIndex, fj);
     }
 
@@ -236,8 +235,7 @@ HOST_DEVICE_FUN HOST_INLINE auto dispatchInteraction(IndexArray<3>        index,
 }
 
 
-template<class ThreeCenterType, class StackVector, class Lambda,
-        std::enable_if_t<HasTwoCenterAggregate<ThreeCenterType>::value, int> = 0>
+template<class ThreeCenterType, class StackVector, class Lambda, std::enable_if_t<HasTwoCenterAggregate<ThreeCenterType>::value, int> = 0>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addTwoCenterAggregate(const ThreeCenterType& parametersA,
                                                               const ThreeCenterType& parametersB,
                                                               const StackVector&     rij,
@@ -264,8 +262,7 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addTwoCenterAggregate(const ThreeCenterT
     return util::make_tuple(ValueType(0), ValueType(0));
 };
 
-template<class ThreeCenterType, class StackVector, class Lambda,
-         std::enable_if_t<!HasTwoCenterAggregate<ThreeCenterType>::value, int> = 0>
+template<class ThreeCenterType, class StackVector, class Lambda, std::enable_if_t<!HasTwoCenterAggregate<ThreeCenterType>::value, int> = 0>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addTwoCenterAggregate(const ThreeCenterType& /* parametersA */,
                                                               const ThreeCenterType& /* parametersB */,
                                                               const StackVector& /* rij */,
@@ -343,7 +340,7 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto computeThreeCenter(const CrossBondBond& 
                                                            StackVector* fj,
                                                            StackVector* fk)
 {
-    using ValueType = VectorValueType_t<StackVector>;
+    using ValueType       = VectorValueType_t<StackVector>;
     auto [ci, ck, energy] = threeCenterKernel(norm(rij), norm(rkj), parametersA);
 
     StackVector fi_loc = ci * rij;
@@ -367,7 +364,7 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto computeThreeCenter(const CrossBondAngle&
                                                            StackVector* fj,
                                                            StackVector* fk)
 {
-    using ValueType = VectorValueType_t<StackVector>;
+    using ValueType           = VectorValueType_t<StackVector>;
     auto [ci, cj, ck, energy] = threeCenterKernel(norm(rij), norm(rkj), norm(rik), parameters);
 
     StackVector fi_loc = ci * rij + ck * rik;
@@ -439,7 +436,7 @@ HOST_DEVICE_FUN HOST_INLINE auto dispatchInteraction(IndexArray<4>          inde
 
     if (sIdx_ij != gmx::c_centralShiftIndex || sIdx_kj != gmx::c_centralShiftIndex)
     {
-        addForce(shiftForces + sIdx_ij,  fi);
+        addForce(shiftForces + sIdx_ij, fi);
         addForce(shiftForces + gmx::c_centralShiftIndex, fj);
         addForce(shiftForces + sIdx_kj, fk);
     }
@@ -447,8 +444,7 @@ HOST_DEVICE_FUN HOST_INLINE auto dispatchInteraction(IndexArray<4>          inde
     return energy;
 }
 
-template<class FourCenterType, class StackVector, class Lambda,
-         std::enable_if_t<HasThreeCenterAggregate<FourCenterType>::value, int> = 0>
+template<class FourCenterType, class StackVector, class Lambda, std::enable_if_t<HasThreeCenterAggregate<FourCenterType>::value, int> = 0>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addThreeCenterAggregate(const FourCenterType& parameterA,
                                                                 const FourCenterType& parameterB,
                                                                 const StackVector&    rij,
@@ -475,8 +471,7 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addThreeCenterAggregate(const FourCenter
     return util::make_tuple(ValueType(0), ValueType(0));
 }
 
-template<class FourCenterType, class StackVector, class Lambda,
-        std::enable_if_t<!HasThreeCenterAggregate<FourCenterType>::value, int> = 0>
+template<class FourCenterType, class StackVector, class Lambda, std::enable_if_t<!HasThreeCenterAggregate<FourCenterType>::value, int> = 0>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addThreeCenterAggregate(const FourCenterType& /* parameterA*/,
                                                                 const FourCenterType& /*parameterB*/,
                                                                 const StackVector& /* rij */,
@@ -492,8 +487,7 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addThreeCenterAggregate(const FourCenter
     return util::make_tuple(ValueType(0), ValueType(0));
 }
 
-template<class FourCenterType, class StackVector, class Lambda,
-        std::enable_if_t<HasTwoCenterAggregate<FourCenterType>::value, int> = 0>
+template<class FourCenterType, class StackVector, class Lambda, std::enable_if_t<HasTwoCenterAggregate<FourCenterType>::value, int> = 0>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addTwoCenterAggregate(const FourCenterType& parameterA,
                                                               const FourCenterType& parameterB,
                                                               const StackVector&    rij,
@@ -522,8 +516,7 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addTwoCenterAggregate(const FourCenterTy
     return util::make_tuple(ValueType(0), ValueType(0));
 }
 
-template<class FourCenterType, class StackVector, class Lambda,
-        std::enable_if_t<!HasTwoCenterAggregate<FourCenterType>::value, int> = 0>
+template<class FourCenterType, class StackVector, class Lambda, std::enable_if_t<!HasTwoCenterAggregate<FourCenterType>::value, int> = 0>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addTwoCenterAggregate(const FourCenterType& /* parameterA*/,
                                                               const FourCenterType& /*parameterB*/,
                                                               const StackVector& /* rij */,
@@ -539,18 +532,17 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addTwoCenterAggregate(const FourCenterTy
     return util::make_tuple(ValueType(0), ValueType(0));
 }
 
-template<class FourCenterType, class StackVector, class ForceVector, class Lambda, class Pbc,
-         std::enable_if_t<HasPairAggregate<FourCenterType>{}, int> = 0>
-HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addPairAggregate(const FourCenterType& parameterA,
-                                                         const FourCenterType& parameterB,
-                                                         const StackVector& xi,
-                                                         const StackVector& xl,
+template<class FourCenterType, class StackVector, class ForceVector, class Lambda, class Pbc, std::enable_if_t<HasPairAggregate<FourCenterType>{}, int> = 0>
+HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addPairAggregate(const FourCenterType&          parameterA,
+                                                         const FourCenterType&          parameterB,
+                                                         const StackVector&             xi,
+                                                         const StackVector&             xl,
                                                          VectorValueType_t<StackVector> qi,
                                                          VectorValueType_t<StackVector> ql,
-                                                         Lambda lambda,
-                                                         ForceVector* fi,
-                                                         ForceVector* fl,
-                                                         const Pbc& pbc)
+                                                         Lambda                         lambda,
+                                                         ForceVector*                   fi,
+                                                         ForceVector*                   fl,
+                                                         const Pbc&                     pbc)
 {
     using ValueType = VectorValueType_t<StackVector>;
 
@@ -564,8 +556,7 @@ HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addPairAggregate(const FourCenterType& p
     return util::make_tuple(ValueType(0), ValueType(0), ValueType(0));
 }
 
-template<class FourCenterType, class StackVector, class ForceVector, class Lambda, class Pbc,
-         std::enable_if_t<!HasPairAggregate<FourCenterType>{}, int> = 0>
+template<class FourCenterType, class StackVector, class ForceVector, class Lambda, class Pbc, std::enable_if_t<!HasPairAggregate<FourCenterType>{}, int> = 0>
 HOST_DEVICE_FUN HOST_DEVICE_INLINE auto addPairAggregate(const FourCenterType& /*parameterA*/,
                                                          const FourCenterType& /*parameterB*/,
                                                          const StackVector& /*xi*/,
@@ -658,8 +649,8 @@ HOST_DEVICE_FUN HOST_INLINE auto dispatchInteraction(IndexArray<5>         index
     addForce(&(*forces)[k], fk);
     addForce(&(*forces)[l], fl);
 
-    if (sIdx_ij != gmx::c_centralShiftIndex || sIdx_kj != gmx::c_centralShiftIndex ||
-        sIdx_lj != gmx::c_centralShiftIndex)
+    if (sIdx_ij != gmx::c_centralShiftIndex || sIdx_kj != gmx::c_centralShiftIndex
+        || sIdx_lj != gmx::c_centralShiftIndex)
     {
         addForce(shiftForces + sIdx_ij, fi);
         addForce(shiftForces + gmx::c_centralShiftIndex, fj);
@@ -743,8 +734,7 @@ HOST_DEVICE_FUN HOST_INLINE auto dispatchInteraction(IndexArray<6>         index
  * \param[in] pbc Object used for computing distances accounting for PBC's
  * \return Computed kernel energies
  */
-template<class Index, class InteractionType, class MemVector, class Buffer, class Lambda,
-        class ShiftForce, class Pbc>
+template<class Index, class InteractionType, class MemVector, class Buffer, class Lambda, class ShiftForce, class Pbc>
 auto computeForces(gmx::ArrayRef<const Index>           indices,
                    gmx::ArrayRef<const InteractionType> parametersA,
                    gmx::ArrayRef<const InteractionType> parametersB,
@@ -797,8 +787,7 @@ auto reduceListedForces(const ListedInteractionData&   interactions,
     std::fill(energies.begin(), energies.end(), 0);
 
     // calculate one bond type
-    auto computeForceType = [forces, x, shiftForces, &energies, &pbc](const auto& interactionElement)
-    {
+    auto computeForceType = [forces, x, shiftForces, &energies, &pbc](const auto& interactionElement) {
         using InteractionType = typename std::decay_t<decltype(interactionElement)>::type;
 
         gmx::ArrayRef<const InteractionIndex<InteractionType>> indices(interactionElement.indices);
@@ -835,4 +824,3 @@ auto reduceListedForces(const ListedInteractionData&   interactions,
 } // namespace nblib
 
 #endif // NBLIB_LISTEDFORCES_DATAFLOW_HPP
-

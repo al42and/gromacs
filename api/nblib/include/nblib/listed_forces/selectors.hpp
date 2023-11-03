@@ -105,7 +105,7 @@ template<class MemVector>
 HOST_DEVICE_FUN inline StackVec3<VectorValueType_t<MemVector>> loadVec(MemVector vector)
 {
     using T = VectorValueType_t<MemVector>;
-    return StackVec3<T>{vector[0], vector[1], vector[2]};
+    return StackVec3<T>{ vector[0], vector[1], vector[2] };
 }
 
 //! \brief store forces back on the host
@@ -149,22 +149,22 @@ class KernelEnergy
 public:
     HOST_DEVICE_FUN KernelEnergy() : energies_{ 0, 0, 0, 0, 0, 0 } {}
 
-    HOST_DEVICE_FUN T&       carrier() { return energies_[0]; }
+    HOST_DEVICE_FUN T&    carrier() { return energies_[0]; }
     HOST_DEVICE_FUN const T& carrier() const { return energies_[0]; }
 
-    HOST_DEVICE_FUN T&       twoCenterAggregate() { return energies_[1]; }
+    HOST_DEVICE_FUN T&    twoCenterAggregate() { return energies_[1]; }
     HOST_DEVICE_FUN const T& twoCenterAggregate() const { return energies_[1]; }
 
-    HOST_DEVICE_FUN T&       threeCenterAggregate() { return energies_[2]; }
+    HOST_DEVICE_FUN T&    threeCenterAggregate() { return energies_[2]; }
     HOST_DEVICE_FUN const T& threeCenterAggregate() const { return energies_[2]; }
 
-    HOST_DEVICE_FUN T&       freeEnergyDerivative() { return energies_[3]; }
+    HOST_DEVICE_FUN T&    freeEnergyDerivative() { return energies_[3]; }
     HOST_DEVICE_FUN const T& freeEnergyDerivative() const { return energies_[3]; }
 
-    HOST_DEVICE_FUN T&       eVdw() { return energies_[4]; }
+    HOST_DEVICE_FUN T&    eVdw() { return energies_[4]; }
     HOST_DEVICE_FUN const T& eVdw() const { return energies_[4]; }
 
-    HOST_DEVICE_FUN T&       eCoul() { return energies_[5]; }
+    HOST_DEVICE_FUN T&    eCoul() { return energies_[5]; }
     HOST_DEVICE_FUN const T& eCoul() const { return energies_[5]; }
 
     HOST_DEVICE_FUN KernelEnergy& operator+=(const KernelEnergy& other)

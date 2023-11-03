@@ -49,17 +49,22 @@
 #define NBLIB_UTIL_ARRAY_HPP
 
 #include <cmath>
-#include <utility>
+
 #include <iterator>
+#include <utility>
 
 #include "nblib/util/annotation.hpp"
 
-namespace util {
+namespace util
+{
 
 template<class T>
 constexpr int determineAlignment(int n)
 {
-    if (sizeof(T) * n % 16 == 0) { return 16; }
+    if (sizeof(T) * n % 16 == 0)
+    {
+        return 16;
+    }
     else if (sizeof(T) * n % 8 == 0)
     {
         return 8;
@@ -99,7 +104,10 @@ struct alignas(determineAlignment<T>(N)) array
 
     HOST_DEVICE_FUN constexpr iterator begin() noexcept { return iterator(data()); }
 
-    HOST_DEVICE_FUN constexpr const_iterator begin() const noexcept { return const_iterator(data()); }
+    HOST_DEVICE_FUN constexpr const_iterator begin() const noexcept
+    {
+        return const_iterator(data());
+    }
 
     HOST_DEVICE_FUN constexpr iterator end() noexcept { return iterator(data() + N); }
 
@@ -149,10 +157,7 @@ struct alignas(determineAlignment<T>(N)) array
     [[nodiscard]] HOST_DEVICE_FUN constexpr bool empty() const noexcept { return size() == 0; }
 
     // Element access.
-    HOST_DEVICE_FUN constexpr reference operator[](size_type n) noexcept
-    {
-        return data_[n];
-    }
+    HOST_DEVICE_FUN constexpr reference operator[](size_type n) noexcept { return data_[n]; }
 
     HOST_DEVICE_FUN constexpr const_reference operator[](size_type n) const noexcept
     {
@@ -165,10 +170,7 @@ struct alignas(determineAlignment<T>(N)) array
 
     HOST_DEVICE_FUN constexpr reference back() noexcept { return *(end() - 1); }
 
-    HOST_DEVICE_FUN constexpr const_reference back() const noexcept
-    {
-        return data_[N - 1];
-    }
+    HOST_DEVICE_FUN constexpr const_reference back() const noexcept { return data_[N - 1]; }
 
     HOST_DEVICE_FUN constexpr pointer data() noexcept { return data_; }
 

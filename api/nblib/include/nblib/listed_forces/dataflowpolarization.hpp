@@ -98,7 +98,10 @@ HOST_DEVICE_INLINE auto dispatchChargedInteraction(IndexArray<3>      index,
     int sIdx = pbc.dxAiuc(xi, xj, dx);
 
     ValueType charge = q[j];
-    if constexpr (Contains<ChargedType, PairListedTypes>{}) { charge *= q[i]; }
+    if constexpr (Contains<ChargedType, PairListedTypes>{})
+    {
+        charge *= q[i];
+    }
 
     auto interactionEnergies = computeTwoCenter(bondA, bondB, dx, charge, lambda, &fi, &fj);
     addEnergy<ChargedType>(&energy, interactionEnergies);
@@ -106,7 +109,7 @@ HOST_DEVICE_INLINE auto dispatchChargedInteraction(IndexArray<3>      index,
     addForce(&(*forces)[i], fi);
     addForce(&(*forces)[j], fj);
 
-    addForce(shiftForces + sIdx,  fi);
+    addForce(shiftForces + sIdx, fi);
     addForce(shiftForces + gmx::c_centralShiftIndex, fj);
 
     return energy;
@@ -126,15 +129,15 @@ HOST_DEVICE_INLINE auto dispatchChargedInteraction(IndexArray<3>      index,
  * \return Computed kernel energies
  */
 template<class Buffer, class FourCenterType, class MemVector, class Lambda, class ShiftForce, class Pbc>
-HOST_INLINE auto dispatchChargedInteraction(IndexArray<5>         index,
-                                            const FourCenterType* parametersA,
-                                            const FourCenterType* parametersB,
-                                            const MemVector*      x,
+HOST_INLINE auto dispatchChargedInteraction(IndexArray<5>                       index,
+                                            const FourCenterType*               parametersA,
+                                            const FourCenterType*               parametersB,
+                                            const MemVector*                    x,
                                             const VectorValueType_t<MemVector>* q,
-                                            Lambda      lambda,
-                                            Buffer*     forces,
-                                            ShiftForce* shiftForces,
-                                            const Pbc&  pbc)
+                                            Lambda                              lambda,
+                                            Buffer*                             forces,
+                                            ShiftForce*                         shiftForces,
+                                            const Pbc&                          pbc)
 {
     using ValueType = VectorValueType_t<MemVector>;
     using Vec       = StackVec3<ValueType>;
@@ -189,8 +192,8 @@ HOST_INLINE auto dispatchChargedInteraction(IndexArray<5>         index,
     addForce(&(*forces)[k], fk);
     addForce(&(*forces)[l], fl);
 
-    if (sIdx_ij != gmx::c_centralShiftIndex || sIdx_kj != gmx::c_centralShiftIndex ||
-        sIdx_lj != gmx::c_centralShiftIndex)
+    if (sIdx_ij != gmx::c_centralShiftIndex || sIdx_kj != gmx::c_centralShiftIndex
+        || sIdx_lj != gmx::c_centralShiftIndex)
     {
         addForce(shiftForces + sIdx_ij, fi);
         addForce(shiftForces + gmx::c_centralShiftIndex, fj);
@@ -262,12 +265,12 @@ auto computePolarizationForces(gmx::ArrayRef<const Index>           indices,
  * \return Computed kernel energies
  */
 template<class Buffer, class MemVector, class ShiftForce, class Pbc>
-auto reducePolarization(const ListedInteractionData& interactions,
+auto reducePolarization(const ListedInteractionData&   interactions,
                         gmx::ArrayRef<const MemVector> x,
-                        gmx::ArrayRef<const real> q,
-                        Buffer* forces,
-                        gmx::ArrayRef<ShiftForce> shiftForces,
-                        const Pbc& pbc)
+                        gmx::ArrayRef<const real>      q,
+                        Buffer*                        forces,
+                        gmx::ArrayRef<ShiftForce>      shiftForces,
+                        const Pbc&                     pbc)
 {
     using ValueType = VectorValueType_t<MemVector>;
 
@@ -276,12 +279,11 @@ auto reducePolarization(const ListedInteractionData& interactions,
         throw InputException("Charges array size mismatch");
     }
 
-    ListedEnergies energies{0};
+    ListedEnergies energies{ 0 };
     std::fill(energies.begin(), energies.end(), 0);
 
     // calculate one bond type
-    auto computeForceType = [forces, x, q, shiftForces, &energies, &pbc](const auto& interactionElement)
-    {
+    auto computeForceType = [forces, x, q, shiftForces, &energies, &pbc](const auto& interactionElement) {
         using InteractionType = typename std::decay_t<decltype(interactionElement)>::type;
 
         gmx::ArrayRef<const InteractionIndex<InteractionType>> indices(interactionElement.indices);

@@ -69,7 +69,7 @@ void deleteInteractions(InteractionData& interactions, const std::vector<int>& d
 
     for (size_t i = 0; i < keep.size(); ++i)
     {
-        if(keep[i])
+        if (keep[i])
         {
             trimmedInteractions.push_back(interactions.indices[i]);
         }
@@ -93,7 +93,7 @@ void migrateParameters(ListedTypeData<CarrierType>& source, ListedTypeData<Aggre
         AggregateType destinationParam;
         destinationParam.carrier() = sourceParam;
 
-        auto destinationIndex = sourceIndex;
+        auto destinationIndex   = sourceIndex;
         destinationIndex.back() = i;
 
         destination.indices.push_back(destinationIndex);
@@ -120,8 +120,8 @@ bool integrateTwoInThree(IndexArray<3>                        index,
     bool integrated = false;
     for (auto it = range.first; it != range.second; ++it)
     {
-        int         aggregateIndex = std::distance(begin(aggregate.indices), it);
-        const auto& carrierIndex   = *it;
+        int            aggregateIndex = std::distance(begin(aggregate.indices), it);
+        const auto&    carrierIndex   = *it;
         AggregateType& aggregateParam = aggregate.parametersA[aggregateIndex];
 
         if (aggregateParam.manifest & AggregateType::has_bond)
@@ -147,8 +147,9 @@ bool integrateTwoInThree(IndexArray<3>                        index,
     return integrated;
 }
 
-template <class TwoCenterType, class ThreeCenterType>
-void migrateTwoToThree(ListedTypeData<TwoCenterType>& twoCSource, ListedTypeData<ThreeCenterType>& threeCSource,
+template<class TwoCenterType, class ThreeCenterType>
+void migrateTwoToThree(ListedTypeData<TwoCenterType>&   twoCSource,
+                       ListedTypeData<ThreeCenterType>& threeCSource,
                        ListedTypeData<ThreeCenterAggregate<TwoCenterType, ThreeCenterType>>& aggregateDestination)
 {
     migrateParameters(threeCSource, aggregateDestination);
@@ -190,8 +191,8 @@ bool integrateTwoInFour(IndexArray<3>                        index,
     bool integrated = false;
     for (auto it = range.first; it != range.second; ++it)
     {
-        int         aggregateIndex = std::distance(begin(aggregate.indices), it);
-        const auto& carrierIndex   = *it;
+        int            aggregateIndex = std::distance(begin(aggregate.indices), it);
+        const auto&    carrierIndex   = *it;
         AggregateType& aggregateParam = aggregate.parametersA[aggregateIndex];
 
         if (aggregateParam.manifest & AggregateType::has_bond)
@@ -276,13 +277,12 @@ bool integratePair(IndexArray<3>                     index,
 {
     auto sortKeyObj = [](const auto& lhs, const auto& rhs) { return lhs[0] < rhs[0]; };
 
-    bool integrated = false;
+    bool          integrated = false;
     IndexArray<5> carrierSearch{ searchIndex };
 
     int otherIndex = (searchIndex == index[0]) ? index[1] : index[0];
 
-    auto range = std::equal_range(
-            begin(aggregateIndices), end(aggregateIndices), carrierSearch, sortKeyObj);
+    auto range = std::equal_range(begin(aggregateIndices), end(aggregateIndices), carrierSearch, sortKeyObj);
 
     for (auto it = range.first; it != range.second; ++it)
     {
@@ -296,7 +296,7 @@ bool integratePair(IndexArray<3>                     index,
         {
             aggregateParam.manifest |= AggregateType::pair_14;
             aggregateParam.pair() = pairSource.parametersA[index[2]];
-            integrated = true;
+            integrated            = true;
             break;
         }
     }
@@ -383,15 +383,14 @@ inline void createAggregates(ListedInteractionData& interactions)
 {
     sortInteractions(interactions);
 
-    auto migrate = [&interactions](auto& interactionElement)
-    {
+    auto migrate = [&interactions](auto& interactionElement) {
         using AggregateType = typename std::decay_t<decltype(interactionElement)>::type;
 
-        auto& bonds         = pickType<typename AggregateType::TwoCenterAggregateType>(interactions);
-        auto& angles        = pickType<typename AggregateType::ThreeCenterAggregateType>(interactions);
-        auto& dihedrals     = pickType<typename AggregateType::CarrierType>(interactions);
-        auto& pairs         = pickType<typename AggregateType::PairAggregateType>(interactions);
-        auto& aggregates    = pickType<AggregateType>(interactions);
+        auto& bonds      = pickType<typename AggregateType::TwoCenterAggregateType>(interactions);
+        auto& angles     = pickType<typename AggregateType::ThreeCenterAggregateType>(interactions);
+        auto& dihedrals  = pickType<typename AggregateType::CarrierType>(interactions);
+        auto& pairs      = pickType<typename AggregateType::PairAggregateType>(interactions);
+        auto& aggregates = pickType<AggregateType>(interactions);
 
         migrateParameters(dihedrals, aggregates);
         migrateTwoToFour(bonds, aggregates);
@@ -500,8 +499,8 @@ inline void integrateBonds(std::vector<IndexArray<3>>&       twoCSource,
     std::unordered_map<util::array<int, 2>, int, ArrayHasher<2>> bonds;
     for (size_t i = 0; i < twoCSource.size(); ++i)
     {
-        auto e = twoCSource[i];
-        IndexArray<2> key{e[0], e[1]};
+        auto          e = twoCSource[i];
+        IndexArray<2> key{ e[0], e[1] };
         bonds[key] = i;
     }
 
@@ -514,7 +513,7 @@ inline void integrateBonds(std::vector<IndexArray<3>>&       twoCSource,
         auto host = carriers[i];
         for (auto grouping : queries)
         {
-            auto it = bonds.find({host[grouping[0]], host[grouping[1]]});
+            auto it = bonds.find({ host[grouping[0]], host[grouping[1]] });
             // if a bond matching these indices exists
             if (it != bonds.end())
             {
@@ -548,8 +547,8 @@ inline void integratePairs(std::vector<IndexArray<3>>&       twoCSource,
     std::unordered_map<util::array<int, 2>, int, ArrayHasher<2>> pairs;
     for (size_t i = 0; i < twoCSource.size(); ++i)
     {
-        auto e = twoCSource[i];
-        IndexArray<2> key{e[0], e[1]};
+        auto          e = twoCSource[i];
+        IndexArray<2> key{ e[0], e[1] };
         pairs[key] = i;
     }
 
@@ -562,7 +561,7 @@ inline void integratePairs(std::vector<IndexArray<3>>&       twoCSource,
         auto host = carriers[i];
         for (auto grouping : queries)
         {
-            auto it = pairs.find({host[grouping[0]], host[grouping[1]]});
+            auto it = pairs.find({ host[grouping[0]], host[grouping[1]] });
             // if a bond matching these indices exists
             if (it != pairs.end())
             {
@@ -596,8 +595,8 @@ inline void integrateAngles(std::vector<IndexArray<4>>&       threeCSource,
     std::unordered_map<util::array<int, 3>, int, ArrayHasher<3>> angles;
     for (size_t i = 0; i < threeCSource.size(); ++i)
     {
-        auto e = threeCSource[i];
-        IndexArray<3> key{e[0], e[1], e[2]};
+        auto          e = threeCSource[i];
+        IndexArray<3> key{ e[0], e[1], e[2] };
         angles[key] = i;
     }
 
@@ -621,7 +620,7 @@ inline void integrateAngles(std::vector<IndexArray<4>>&       threeCSource,
         auto host = carriers[i];
         for (auto grouping : queries)
         {
-            auto it = angles.find({host[grouping[0]], host[grouping[1]], host[grouping[2]]});
+            auto it = angles.find({ host[grouping[0]], host[grouping[1]], host[grouping[2]] });
             // if a bond matching these indices exists
             if (it != angles.end())
             {

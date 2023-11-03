@@ -45,33 +45,33 @@
 // This will compile the annotated function as device AND host code in cuda translation units
 // and as host functions in .cpp units
 #if defined(__CUDACC__)
-#define HOST_DEVICE_FUN __host__ __device__
+#    define HOST_DEVICE_FUN __host__ __device__
 #else
-#define HOST_DEVICE_FUN
+#    define HOST_DEVICE_FUN
 #endif
 
 #if defined(__CUDACC__)
-#define DEVICE_FUN __device__
+#    define DEVICE_FUN __device__
 #else
-#define DEVICE_FUN
+#    define DEVICE_FUN
 #endif
 
 #if defined(__CUDACC__)
-#define HOST_INLINE
+#    define HOST_INLINE
 #else
-#define HOST_INLINE inline __attribute((always_inline))
+#    define HOST_INLINE inline __attribute((always_inline))
 #endif
 
 #if defined(__CUDACC__)
-#define DEVICE_INLINE __forceinline__
+#    define DEVICE_INLINE __forceinline__
 #else
-#define DEVICE_INLINE
+#    define DEVICE_INLINE
 #endif
 
 #if defined(__CUDACC__)
-#define HOST_DEVICE_INLINE __forceinline__
+#    define HOST_DEVICE_INLINE __forceinline__
 #else
-#define HOST_DEVICE_INLINE inline __attribute((always_inline))
+#    define HOST_DEVICE_INLINE inline __attribute((always_inline))
 #endif
 
 #endif // NBLIB_LISTEDFORCES_ANNOTATION_H

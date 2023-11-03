@@ -81,8 +81,8 @@ inline util::array<int, 3> shiftIndexToXyz(int s)
 
 TEST(NBlibTest, PbcShiftIndex)
 {
-    Box           box(10, 10, 10);
-    PbcHolder     pbc(PbcType::Xyz, box);
+    Box       box(10, 10, 10);
+    PbcHolder pbc(PbcType::Xyz, box);
 
     gmx::RVec x1{ 1, 0, 0 }, x2{ 9, 0, 0 };
     gmx::RVec dx;

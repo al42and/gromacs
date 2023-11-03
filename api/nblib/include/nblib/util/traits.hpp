@@ -233,8 +233,8 @@ using AccessTypeMemberIfPresent_t = typename AccessTypeMemberIfPresent<T>::type;
  */
 template<int N, typename T, typename Tuple>
 struct MatchTypeOrTypeMember :
-        std::disjunction<std::is_same<T, TypeListElement_t<N, Tuple>>,
-                std::is_same<T, AccessTypeMemberIfPresent_t<TypeListElement_t<N, Tuple>>>>
+    std::disjunction<std::is_same<T, TypeListElement_t<N, Tuple>>,
+                     std::is_same<T, AccessTypeMemberIfPresent_t<TypeListElement_t<N, Tuple>>>>
 {
 };
 
@@ -247,7 +247,7 @@ struct MatchField_ : util::integral_constant<size_t, MatchField_<N + 1, T, Tuple
 //! \brief recursion stop when Comparison<N, T, Tuple>::value is true
 template<int N, class T, class Tuple, template<int, class, class> class Comparison>
 struct MatchField_<N, T, Tuple, Comparison, std::enable_if_t<Comparison<N, T, Tuple>{}>> :
-        util::integral_constant<size_t, N>
+    util::integral_constant<size_t, N>
 {
 };
 
@@ -367,20 +367,20 @@ struct SwapArg<Base<T, I>, Arg>
 };
 
 //! \brief return the index sequence of the subList entries in the baseList
-template<class...Ts1, class...Ts2>
+template<class... Ts1, class... Ts2>
 auto subsetIndices(TypeList<Ts1...> /*subList*/, TypeList<Ts2...> /*baseList*/)
 {
     return std::index_sequence<FindIndex<Ts1, TypeList<Ts2...>>{}...>{};
 }
 
 //! \brief return a tuple of lvalue references for the specified indices of the argument tuple
-template<class...Ts, size_t...Is>
+template<class... Ts, size_t... Is>
 auto tieElements(std::tuple<Ts...>& tuple, std::index_sequence<Is...>)
 {
     return std::tie(std::get<Is>(tuple)...);
 }
 
-template<class...Ts, size_t...Is>
+template<class... Ts, size_t... Is>
 auto tieElements(const std::tuple<Ts...>& tuple, std::index_sequence<Is...>)
 {
     return std::tie(std::get<Is>(tuple)...);

@@ -54,11 +54,10 @@
 #include <vector>
 
 #include "gromacs/utility/listoflists.h"
-#include "nblib/molecules.h"
-
-#include "nblib/particlesequencer.h"
 
 #include "nblib/listed_forces/transformations.h"
+#include "nblib/molecules.h"
+#include "nblib/particlesequencer.h"
 
 namespace nblib
 {
@@ -171,8 +170,7 @@ namespace sequence_detail
 template<class Tuple, class F, class... Args, size_t... Is>
 auto stringsToIndices_impl(const Tuple& tuple, [[maybe_unused]] std::index_sequence<Is...> is, F&& f, Args... args)
 {
-    return IndexArray<sizeof...(Is)>{ f(args..., std::get<2 * Is + 1>(tuple),
-                                             std::get<2 * Is>(tuple))... };
+    return IndexArray<sizeof...(Is)>{ f(args..., std::get<2 * Is + 1>(tuple), std::get<2 * Is>(tuple))... };
 }
 
 /*! \brief

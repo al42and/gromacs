@@ -54,8 +54,8 @@
 #include "gromacs/pbcutil/pbc_aiuc.h"
 
 #include "nblib/box.h"
-#include "nblib/util/annotation.hpp"
 #include "nblib/listed_forces/traits.h"
+#include "nblib/util/annotation.hpp"
 
 namespace nblib
 {

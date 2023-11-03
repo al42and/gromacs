@@ -46,9 +46,10 @@
 #define NBLIB_LISTEDFORCES_POSITIONRESTRAINTS_HPP
 
 #include "gromacs/pbcutil/pbc.h"
+
 #include "nblib/listed_forces/bondtypes.h"
-#include "nblib/pbc.hpp"
 #include "nblib/listed_forces/traits.h"
+#include "nblib/pbc.hpp"
 
 namespace nblib
 {

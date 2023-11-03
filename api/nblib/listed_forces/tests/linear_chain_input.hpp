@@ -48,8 +48,8 @@
 #include "gromacs/math/vectypes.h"
 
 #include "nblib/box.h"
-#include "nblib/topologyhelpers.h"
 #include "nblib/listed_forces/traits.h"
+#include "nblib/topologyhelpers.h"
 
 namespace nblib
 {
@@ -124,7 +124,7 @@ public:
 
     ListedInteractionData interactions;
 
-    Box box{0};
+    Box box{ 0 };
 };
 
 } // namespace nblib

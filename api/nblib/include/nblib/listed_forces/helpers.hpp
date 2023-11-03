@@ -51,8 +51,8 @@
 
 #include "gromacs/utility/arrayref.h"
 
-#include "nblib/pbc.hpp"
 #include "nblib/listed_forces/definitions.h"
+#include "nblib/pbc.hpp"
 #include "nblib/util/util.hpp"
 
 namespace nblib
@@ -87,11 +87,9 @@ class ForceBufferProxy
     using HashMap = std::unordered_map<int, T>;
 
 public:
-    ForceBufferProxy() : rangeStart_(0), rangeEnd_(0) { }
+    ForceBufferProxy() : rangeStart_(0), rangeEnd_(0) {}
 
-    ForceBufferProxy(int rangeStart, int rangeEnd) : rangeStart_(rangeStart), rangeEnd_(rangeEnd)
-    {
-    }
+    ForceBufferProxy(int rangeStart, int rangeEnd) : rangeStart_(rangeStart), rangeEnd_(rangeEnd) {}
 
     void clearOutliers() { outliers.clear(); }
 
@@ -117,14 +115,17 @@ public:
     typename HashMap::const_iterator begin() { return outliers.begin(); }
     typename HashMap::const_iterator end() { return outliers.end(); }
 
-    [[nodiscard]] bool inRange(int index) const { return (index >= rangeStart_ && index < rangeEnd_); }
+    [[nodiscard]] bool inRange(int index) const
+    {
+        return (index >= rangeStart_ && index < rangeEnd_);
+    }
 
     void setMasterBuffer(gmx::ArrayRef<T> buffer) { masterForceBuffer = buffer; }
 
 private:
     gmx::ArrayRef<T> masterForceBuffer;
-    int rangeStart_;
-    int rangeEnd_;
+    int              rangeStart_;
+    int              rangeEnd_;
 
     HashMap outliers;
 };
@@ -155,17 +156,13 @@ static int computeChunkIndex(int index, int totalRange, int nSplits)
  * \return
  */
 template<class ParamHolder>
-inline
-std::vector<ParamHolder> splitListedWork(const ParamHolder& interactions,
-                                         int                          totalRange,
-                                         int                          nSplits)
+inline std::vector<ParamHolder> splitListedWork(const ParamHolder& interactions, int totalRange, int nSplits)
 {
     std::vector<ParamHolder> workDivision(nSplits);
 
     auto splitOneElement = [totalRange, nSplits, &workDivision](const auto& inputElement) {
         // the index of inputElement in the ListedInteractionsTuple
-        constexpr int elementIndex =
-                FindIndex<std::decay_t<decltype(inputElement)>, ParamHolder>{};
+        constexpr int elementIndex = FindIndex<std::decay_t<decltype(inputElement)>, ParamHolder>{};
 
         // for now, copy all parameters to each split
         // Todo: extract only the parameters needed for this split

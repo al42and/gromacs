@@ -74,42 +74,57 @@ static std::tuple TestInput{
     // One center Types
     TypeInput<PositionRestraints>{ { { { PositionRestraints(0.5, 0.6, 0.0, 0, 200, 400) } },
                                      {},
-                                     { indexVector<PositionRestraints>() } }, "PositionRestraints" },
+                                     { indexVector<PositionRestraints>() } },
+                                   "PositionRestraints" },
     // Two Center Types
     TypeInput<HarmonicBondType>{
-    { { { HarmonicBondType(500.0, 0.15) } }, {}, { indexVector<HarmonicBondType>() } }, "HarmonicBond" },
-    TypeInput<G96BondType>{ { { { G96BondType(50.0, 0.15) } }, {}, { indexVector<G96BondType>() } }, "G96Bond" },
-    TypeInput<CubicBondType>{
-    { { { CubicBondType(50.0, 2.0, 0.16) } }, {}, { indexVector<CubicBondType>() } }, "CubicBond" },
-    TypeInput<MorseBondType>{
-    { { { MorseBondType(30.0, 2.7, 0.15) } }, {}, { indexVector<MorseBondType>() } }, "MorseBond" },
-    TypeInput<FENEBondType>{ { { { FENEBondType(5.0, 0.4) } }, {}, { indexVector<FENEBondType>() } }, "FENEBond" },
+            { { { HarmonicBondType(500.0, 0.15) } }, {}, { indexVector<HarmonicBondType>() } },
+            "HarmonicBond" },
+    TypeInput<G96BondType>{ { { { G96BondType(50.0, 0.15) } }, {}, { indexVector<G96BondType>() } },
+                            "G96Bond" },
+    TypeInput<CubicBondType>{ { { { CubicBondType(50.0, 2.0, 0.16) } }, {}, { indexVector<CubicBondType>() } },
+                              "CubicBond" },
+    TypeInput<MorseBondType>{ { { { MorseBondType(30.0, 2.7, 0.15) } }, {}, { indexVector<MorseBondType>() } },
+                              "MorseBond" },
+    TypeInput<FENEBondType>{ { { { FENEBondType(5.0, 0.4) } }, {}, { indexVector<FENEBondType>() } },
+                             "FENEBond" },
     // Polarization Types
     TypeInput<SimplePolarization>{
-    { { { SimplePolarization(0.12) } }, {}, { indexVector<SimplePolarization>() } }, "SimplePolarization" },
-    //TypeInput<PairLJType>{
+            { { { SimplePolarization(0.12) } }, {}, { indexVector<SimplePolarization>() } },
+            "SimplePolarization" },
+    // TypeInput<PairLJType>{
     //    { { { PairLJType(C6(0.001458), C12(1.0062882e-6)) } }, {}, indexVector<PairLJType>() }, "ChargedLJPair" },
     // Three Center Types
     TypeInput<HarmonicAngle>{
-    { { { HarmonicAngle(50.0, Degrees(100)) } }, {}, { indexVector<HarmonicAngle>() } }, "HarmonicAngle" },
-    TypeInput<G96Angle>{ { { { G96Angle(50.0, Degrees(100)) } }, {}, { indexVector<G96Angle>() } }, "CosineAngle" },
+            { { { HarmonicAngle(50.0, Degrees(100)) } }, {}, { indexVector<HarmonicAngle>() } },
+            "HarmonicAngle" },
+    TypeInput<G96Angle>{ { { { G96Angle(50.0, Degrees(100)) } }, {}, { indexVector<G96Angle>() } },
+                         "CosineAngle" },
     TypeInput<RestrictedAngle>{
-    { { { RestrictedAngle(50.0, Degrees(100)) } }, {}, { indexVector<RestrictedAngle>() } }, "RestrictedAngle" },
-    TypeInput<LinearAngle>{ { { { LinearAngle(50.0, 0.4) } }, {}, { indexVector<LinearAngle>() } }, "LinearAngle" },
+            { { { RestrictedAngle(50.0, Degrees(100)) } }, {}, { indexVector<RestrictedAngle>() } },
+            "RestrictedAngle" },
+    TypeInput<LinearAngle>{ { { { LinearAngle(50.0, 0.4) } }, {}, { indexVector<LinearAngle>() } },
+                            "LinearAngle" },
     TypeInput<QuarticAngle>{ { { { QuarticAngle(1.1, 2.3, 4.6, 7.8, 9.2, Degrees(87)) } },
                                {},
-                               { indexVector<QuarticAngle>() } }, "QuarticAngle" },
-    TypeInput<CrossBondBond>{
-    { { { CrossBondBond(45.0, 0.8, 0.7) } }, {}, { indexVector<CrossBondBond>() } }, "CrossBondBond" },
+                               { indexVector<QuarticAngle>() } },
+                             "QuarticAngle" },
+    TypeInput<CrossBondBond>{ { { { CrossBondBond(45.0, 0.8, 0.7) } }, {}, { indexVector<CrossBondBond>() } },
+                              "CrossBondBond" },
     TypeInput<CrossBondAngle>{
-    { { { CrossBondAngle(45.0, 0.8, 0.7, 0.3) } }, {}, { indexVector<CrossBondAngle>() } }, "CrossBondAngle" },
+            { { { CrossBondAngle(45.0, 0.8, 0.7, 0.3) } }, {}, { indexVector<CrossBondAngle>() } },
+            "CrossBondAngle" },
     // Four Center Types
     TypeInput<ProperDihedral>{
-    { { { ProperDihedral(Degrees(-105), 15.0, 2) } }, {}, { indexVector<ProperDihedral>() } }, "ProperDihedral" },
+            { { { ProperDihedral(Degrees(-105), 15.0, 2) } }, {}, { indexVector<ProperDihedral>() } },
+            "ProperDihedral" },
     TypeInput<ImproperDihedral>{
-    { { { ImproperDihedral(Degrees(100), 50) } }, {}, { indexVector<ImproperDihedral>() } }, "ImproperDihedral" },
-    TypeInput<RyckaertBellemanDihedral>{
-        {{{ RyckaertBellemanDihedral(-7.35, 13.6, 8.4, -16.7, 1.3, 12.4) }}, {}, { indexVector<RyckaertBellemanDihedral>() } }, "RBDihedral" }
+            { { { ImproperDihedral(Degrees(100), 50) } }, {}, { indexVector<ImproperDihedral>() } },
+            "ImproperDihedral" },
+    TypeInput<RyckaertBellemanDihedral>{ { { { RyckaertBellemanDihedral(-7.35, 13.6, 8.4, -16.7, 1.3, 12.4) } },
+                                           {},
+                                           { indexVector<RyckaertBellemanDihedral>() } },
+                                         "RBDihedral" }
 };
 
 //! \brief Converts the input data tuple above into a ListedInteractionData package that can be used as input for ListedForceCalculator
@@ -119,8 +134,7 @@ ListedInteractionData combineTestInput(std::tuple<Ts...> testInput)
     ListedInteractionData interactionData;
     // transfer all elements of testInput into the returned ListedInteractionData
     // use a lambda + for_each_tuple
-    auto copyParamsOneType = [&interactionData](const auto& typeInput)
-    {
+    auto copyParamsOneType = [&interactionData](const auto& typeInput) {
         for (size_t i = 0; i < typeInput.interactionData.parametersA.size(); i++)
         {
             auto interactionParams = typeInput.interactionData.parametersA[i];

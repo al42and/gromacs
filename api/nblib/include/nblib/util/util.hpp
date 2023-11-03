@@ -47,8 +47,8 @@
 #define NBLIB_UTIL_UTIL_HPP
 
 #include <cassert>
-#include <limits>
 
+#include <limits>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -88,7 +88,7 @@ HOST_DEVICE_FUN constexpr auto discardFirstElement(const tuple<Ts...>& tuple)
     return discardFirstImpl(tuple, Seq{});
 }
 
-}  // namespace util
+} // namespace util
 
 namespace nblib
 {
@@ -135,7 +135,7 @@ struct StrongType
 
     //! access the underlying value
     HOST_DEVICE_FUN const T& value() const { return value_; }
-    HOST_DEVICE_FUN T&       value() { return value_; }
+    HOST_DEVICE_FUN T& value() { return value_; }
 
 private:
     T value_;
@@ -171,10 +171,9 @@ HOST_DEVICE_FUN inline bool operator>(const StrongType<T, Phantom>& lhs, const S
 /*! \brief create a switch on \p runtimeIndex with CompileTimeIndices as the possible cases
  *
  * \tparam CompileTimeIndices  integer sequence of possible switch case values
- * \tparam F                   callable object taking a compile time integer, e.g integral_constant<int, N>
- * \param runtimeIndex         runtime value to call f with
- * \param f                    callable of type F
- * \return                     f(integral_constant<int, runtimeIndex>{})
+ * \tparam F                   callable object taking a compile time integer, e.g
+ * integral_constant<int, N> \param runtimeIndex         runtime value to call f with \param f
+ * callable of type F \return                     f(integral_constant<int, runtimeIndex>{})
  *
  * f is called with the compile time constant value of runtimeIndex.
  * This function (createSwitch) is equivalent to:
@@ -192,7 +191,7 @@ HOST_DEVICE_FUN auto createSwitch(int runtimeIndex, std::integer_sequence<int, C
     using ReturnType =
             std::common_type_t<decltype(f(util::integral_constant<int, CompileTimeIndices>{}))...>;
 
-    ReturnType ret;
+    ReturnType                                  ret;
     [[maybe_unused]] std::initializer_list<int> list{ (
             runtimeIndex == CompileTimeIndices
             ? (ret = f(util::integral_constant<int, CompileTimeIndices>{})),
@@ -206,18 +205,22 @@ HOST_DEVICE_FUN auto createSwitch(int runtimeIndex, std::integer_sequence<int, C
 template<class F, class... Ts>
 void for_each_tuple(F&& func, std::tuple<Ts...>& tuple_)
 {
-    std::apply([f = func](auto&... args)
-               { [[maybe_unused]] auto list = std::initializer_list<int>{ (f(args), 0)... }; },
-               tuple_);
+    std::apply(
+            [f = func](auto&... args) {
+                [[maybe_unused]] auto list = std::initializer_list<int>{ (f(args), 0)... };
+            },
+            tuple_);
 }
 
 //! \brief Utility to call function with each element in tuple_ with const guarantee
 template<class F, class... Ts>
 void for_each_tuple(F&& func, const std::tuple<Ts...>& tuple_)
 {
-    std::apply([f = func](auto&... args)
-               { [[maybe_unused]] auto list = std::initializer_list<int>{ (f(args), 0)... }; },
-               tuple_);
+    std::apply(
+            [f = func](auto&... args) {
+                [[maybe_unused]] auto list = std::initializer_list<int>{ (f(args), 0)... };
+            },
+            tuple_);
 }
 
 //! \brief Format strings for use in error messages
