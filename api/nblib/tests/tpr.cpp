@@ -88,7 +88,7 @@ TEST_F(TprReaderTest, Spc2Reads)
 {
     TprReader tprReader = makeTPRfromSimulationDatabase("spc2");
 
-    EXPECT_NO_THROW(auto numCoordinates = tprReader.coordinates_.size());
+    EXPECT_NO_THROW(auto __attribute__ ((unused)) numCoordinates = tprReader.coordinates_.size());
 }
 
 TEST_F(TprReaderTest, ArgonImportedDataIsCorrect)
