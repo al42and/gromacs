@@ -85,7 +85,7 @@ target_link_libraries(listedperformance PRIVATE nblib
                                                 utility)
 target_include_directories(listedperformance SYSTEM PRIVATE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/external/thread_mpi/include)
 
-if(CMAKE_CUDA_COMPILER AND GMX_GPU_CUDA AND NOT ${CMAKE_VERSION} VERSION_LESS "3.17.0")
+if(CMAKE_CUDA_COMPILER AND GMX_GPU_CUDA AND NOT ${CMAKE_VERSION} VERSION_LESS "3.17.0" AND NOT ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS "10.0.0")
 
     set(exename "nblib-listed-gpu-test")
     add_executable(${exename} listedgpu.cu)
