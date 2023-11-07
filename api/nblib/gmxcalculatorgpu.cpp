@@ -211,7 +211,7 @@ void GmxNBForceCalculatorGpu::GpuImpl::reorder(gmx::ArrayRef<const gmx::RVec> co
     // input size is actual number of particles
     assert(coordinateInput.size() == system_.numParticles_);
     // output size is equal to internal padded buffer size
-    assert(coordinateOutput.size() == backend_.nbv_->nbat->x().size());
+    assert(coordinateOutput.size() == backend_.nbv_->nbat().x().size());
 
     backend_.nbv_->convertCoordinates(gmx::AtomLocality::Local, coordinateInput);
     gmx::ArrayRef<real> nbatXRef = backend_.nbv_->nbat().x();
