@@ -43,12 +43,12 @@
 
 #include <tuple>
 
-#if defined(__CUDACC__) || defined(__HIPCC__)
+#if defined(__CUDACC__)
 #    include <thrust/tuple.h>
 #endif
 
 
-#if defined(__CUDACC__) || defined(__HIPCC__)
+#if defined(__CUDACC__)
 
 namespace util
 {
