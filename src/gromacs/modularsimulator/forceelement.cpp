@@ -43,6 +43,7 @@
 #include "forceelement.h"
 
 #include "gromacs/domdec/mdsetup.h"
+#include "gromacs/listed_forces/listed_forces_gpu.h"
 #include "gromacs/math/vectypes.h"
 #include "gromacs/mdlib/constr.h"
 #include "gromacs/mdlib/force.h"
@@ -55,8 +56,11 @@
 #include "gromacs/mdtypes/interaction_const.h"
 #include "gromacs/mdtypes/mdatom.h"
 #include "gromacs/mdtypes/mdrunoptions.h"
+#include "gromacs/mdtypes/multipletimestepping.h"
 #include "gromacs/mdtypes/simulation_workload.h"
 #include "gromacs/pbcutil/pbc.h"
+#include "gromacs/taskassignment/include/gromacs/taskassignment/decidesimulationworkload.h"
+#include "gromacs/topology/topology.h"
 
 #include "energydata.h"
 #include "freeenergyperturbationdata.h"
@@ -151,10 +155,11 @@ void ForceElement::scheduleTask(Step step, Time time, const RegisterRunFunction&
 {
     unsigned int flags =
             (GMX_FORCE_STATECHANGED | GMX_FORCE_ALLFORCES | (isDynamicBox_ ? GMX_FORCE_DYNAMICBOX : 0)
+             | (doShellFC_ && isVerbose_ ? GMX_FORCE_ENERGY : 0)
              | (nextVirialCalculationStep_ == step ? GMX_FORCE_VIRIAL : 0)
              | (nextEnergyCalculationStep_ == step ? GMX_FORCE_ENERGY : 0)
              | (nextFreeEnergyCalculationStep_ == step ? GMX_FORCE_DHDL : 0)
-             | (!doShellFC_ && nextNSStep_ == step ? GMX_FORCE_NS : 0));
+             | (nextNSStep_ == step ? GMX_FORCE_NS : 0));
 
     registerRunFunction([this, step, time, flags]() {
         if (doShellFC_)
@@ -188,6 +193,20 @@ void ForceElement::run(Step step, Time time, unsigned int flags)
         correct_box(fplog_, step, box);
     }
 
+    if (flags & GMX_FORCE_NS)
+    {
+        if (fr_->listedForcesGpu)
+        {
+            fr_->listedForcesGpu->updateHaveInteractions(localTopology_->idef);
+        }
+        gmx_edsam* ed                = nullptr; // disabled
+        runScheduleWork_->domainWork = setupDomainLifetimeWorkload(
+                *inputrec_, *fr_, pull_work_, ed, *mdAtoms_->mdatoms(), runScheduleWork_->simulationWork);
+    }
+
+    runScheduleWork_->stepWork = setupStepWorkload(
+            flags, inputrec_->mtsLevels, step, runScheduleWork_->domainWork, runScheduleWork_->simulationWork);
+
     /* The coordinates (x) are shifted (to get whole molecules)
      * in do_force.
      * This is parallelized as well, and does communication too.
@@ -220,7 +239,6 @@ void ForceElement::run(Step step, Time time, unsigned int flags)
                             imdSession_,
                             pull_work_,
                             step == nextNSStep_,
-                            static_cast<int>(flags),
                             localTopology_,
                             constr_,
                             energyData_->enerdata(),
@@ -238,7 +256,7 @@ void ForceElement::run(Step step, Time time, unsigned int flags)
                             wcycle_,
                             shellfc_,
                             fr_,
-                            runScheduleWork_,
+                            *runScheduleWork_,
                             time,
                             energyData_->muTot(),
                             vsite_,
@@ -276,13 +294,12 @@ void ForceElement::run(Step step, Time time, unsigned int flags)
                  energyData_->enerdata(),
                  lambda,
                  fr_,
-                 runScheduleWork_,
+                 *runScheduleWork_,
                  vsite_,
                  energyData_->muTot(),
                  time,
                  ed,
                  longRangeNonbondeds_.get(),
-                 static_cast<int>(flags),
                  ddBalanceRegionHandler_);
     }
     energyData_->addToForceVirial(force_vir, step);

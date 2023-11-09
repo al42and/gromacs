@@ -36,7 +36,7 @@
 
 include(gmxFindFlagsForSource)
 
-if(NOT GMX_GPU_SYCL OR GMX_SYCL_HIPSYCL)
+if(NOT GMX_GPU_SYCL OR GMX_SYCL_ACPP OR NOT GMX_SYCL_DPCPP)
     message(FATAL_ERROR "Internal error: OneAPI configuration script was included when it should not")
 endif()
 
@@ -51,7 +51,7 @@ if(WIN32)
     endif()
 endif()
 if(CMAKE_CXX_COMPILER MATCHES "dpcpp")
-    message(FATAL_ERROR "Intel's \"dpcpp\" compiler is deprecated; please use \"icpx\" for SYCL builds")
+    message(FATAL_ERROR "Intel's \"dpcpp\" compiler is not supported; please use \"icpx\" for SYCL builds")
 endif()
 
 # Find the flags to enable (or re-enable) SYCL with Intel extensions. In case we turned it off above,
@@ -182,6 +182,14 @@ separate_arguments(SYCL_TOOLCHAIN_CXX_FLAGS)
 list(APPEND SYCL_TOOLCHAIN_CXX_FLAGS ${SYCL_CXX_FLAGS_EXTRA})
 separate_arguments(SYCL_TOOLCHAIN_LINKER_FLAGS)
 list(APPEND SYCL_TOOLCHAIN_LINKER_FLAGS ${SYCL_CXX_FLAGS_EXTRA})
+
+# We disable warnings about functions deprecated in SYCL2020, because
+# sometimes there is no widely-supported alternative.
+# E.g., https://github.com/AdaptiveCpp/AdaptiveCpp/issues/1230.
+# It would be good to occasionally remove this macro and clean
+# up the code. But, as of November 2023, it produces too much noise
+# without offering a targeted way to suppress specific warnings.
+list(APPEND SYCL_TOOLCHAIN_CXX_FLAGS "-DSYCL2020_DISABLE_DEPRECATION_WARNINGS")
 
 # Make strings for pretty-printing in gmx -version
 string(REPLACE ";" " " SYCL_TOOLCHAIN_CXX_FLAGS_STR "${SYCL_TOOLCHAIN_CXX_FLAGS}")

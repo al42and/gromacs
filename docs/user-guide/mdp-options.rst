@@ -268,6 +268,19 @@ Run control
       Interval for computing the forces in level 2 of the multiple time-stepping
       scheme
 
+.. mdp:: mass-repartitioning-factor
+
+      (1) []
+      Scales the masses of the lightest atoms in the system by this factor
+      to the mass mMin. All atoms with a mass lower than mMin also have
+      their mass set to that mMin. The mass change is subtracted from the mass
+      of the atom the light atom is bound to. If there is no bound atom a
+      warning is generated. If there is more than one atom bound an error is
+      generated. If the mass of the bound atom would become lower than mMin
+      an error is generated. For typical atomistic systems only the masses
+      of hydrogens are scaled. With h-bonds constrained a factor of 3 will
+      usually enable a time step of 4 fs.
+
 .. mdp:: comm-mode
 
    .. mdp-value:: Linear
@@ -518,15 +531,14 @@ Neighbor searching
       Use no periodic boundary conditions, ignore the box. To simulate
       without cut-offs, set all cut-offs and :mdp:`nstlist` to 0. For
       best performance without cut-offs on a single MPI rank, set
-      :mdp:`nstlist` to zero and :mdp-value:`ns-type=simple`.
+      :mdp:`nstlist` to zero.
 
    .. mdp-value:: xy
 
-      Use periodic boundary conditions in x and y directions
-      only. This works only with :mdp-value:`ns-type=grid` and can be used
-      in combination with walls_. Without walls or with only one wall
-      the system size is infinite in the z direction. Therefore
-      pressure coupling or Ewald summation methods can not be
+      Use periodic boundary conditions in x and y directions only.
+      This can be used in combination with walls_. Without walls
+      or with only one wall the system size is infinite in the z direction.
+      Therefore pressure coupling or Ewald summation methods can not be
       used. These disadvantages do not apply when two walls are used.
 
 .. mdp:: periodic-molecules
@@ -2168,6 +2180,28 @@ AWH adaptive biasing
       Sharing may increase convergence initially, although the starting configurations
       can be critical, especially when sharing between many biases.
 
+.. mdp:: awh1-target-metric-scaling
+
+   .. mdp-value:: no
+
+      Do not scale the target distribution based on the AWH friction metric.
+
+   .. mdp-value:: yes
+
+      Scale the target distribution based on the AWH friction metric. Regions with
+      high friction (long autocorrelation times) will be sampled more. The diffusion metric
+      is the inverse of the friction metric. This scaling can be used with any
+      :mdp:`awh1-target` type and is applied after user provided target distribution
+      modifications (:mdp:`awh1-user-data`), if any. If :mdp-value:`awh1-growth=exp-linear`,
+      the target distribution scaling starts after leaving the initial phase.
+
+.. mdp:: awh1-target-metric-scaling-limit
+
+   (10)
+   The upper limit of scaling, relative to the average, when
+   :mdp-value:`awh1-target-metric-scaling` is enabled. The lower limit will be the inverse
+   of this value. This upper limit should be > 1.
+
 .. mdp:: awh1-ndim
 
    (1) [integer]
@@ -3468,7 +3502,7 @@ electron-microscopy experiments. (See the `reference manual`_ for details)
    and energies. Corresponds to a transformation of the input density by the
    inverse of this matrix. The matrix is given in row-major order.
    This option allows, e.g., rotation of the density-guided atom group around the
-   z-axis by :math:`\theta` degress by using following input:
+   z-axis by :math:`\theta` degrees by using the following input:
    :math:`(\cos \theta , -\sin \theta , 0 , \sin \theta , \cos \theta , 0 , 0 , 0 , 1)` .
 
 QM/MM simulations with CP2K Interface 
@@ -3516,6 +3550,46 @@ For further details about QM/MM interface implementation follow :ref:`qmmm`.
    () Names of the CP2K files that will be generated during the simulation. 
    When using the default, empty, value the name of the simulation input file will be used 
    with an additional ``_cp2k`` suffix.
+
+.. _mdp-colvars:
+
+Collective variables (Colvars) module
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These options enable and control the features provided by the collective
+variables (Colvars) module (`link <https://colvars.github.io/>`_), a software
+library for enhanced sampling methods in molecular simulations.  The Colvars
+module is described in ref. \ :ref:`192 <refFiorin13>` as well as other
+references that are reported in the log file when the corresponding features
+are used.
+For further details about Colvars interface implementation follow :ref:`colvars`.
+
+.. mdp:: colvars-active
+
+   (false) Activate Colvars computation in the current run. Requires that the
+   Colvars library was compiled with |Gromacs|, which is the default in a
+   typical installation.
+
+.. mdp:: colvars-configfile
+
+   (colvars.dat) Name of the Colvars configuration file, using options
+   specific to Colvars that are documented at:
+   `https://colvars.github.io/gromacs-2024/colvars-refman-gromacs.html
+   <https://colvars.github.io/gromacs-2024/colvars-refman-gromacs.html>`_.
+   The file name can be either an absolute path, or a path relative to the
+   folder from which :ref:`gmx mdrun` is called.
+
+.. mdp:: colvars-seed
+
+   (-1) [integer] Seed used to initialize the random generator associated
+   with certain stochastic methods implemented within Colvars.  The default
+   value of -1 generates a random seed.
+
+The current implementation of the Colvars-|Gromacs| interface gathers the
+relevant atomic coordinates on one MPI rank, where all collective variables
+and their forces are computed.  Take this fact into account when choosing how
+many atoms to include in selections.
+
 
 User defined thingies
 ^^^^^^^^^^^^^^^^^^^^^

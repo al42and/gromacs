@@ -71,6 +71,7 @@
 #include "gromacs/gpu_utils/gpu_utils.h"
 #include "gromacs/imd/imd.h"
 #include "gromacs/listed_forces/listed_forces.h"
+#include "gromacs/listed_forces/listed_forces_gpu.h"
 #include "gromacs/math/boxmatrix.h"
 #include "gromacs/math/functions.h"
 #include "gromacs/math/vec.h"
@@ -117,6 +118,7 @@
 #include "gromacs/mdtypes/forcebuffers.h"
 #include "gromacs/mdtypes/forcerec.h"
 #include "gromacs/mdtypes/group.h"
+#include "gromacs/mdtypes/iforceprovider.h"
 #include "gromacs/mdtypes/inputrec.h"
 #include "gromacs/mdtypes/interaction_const.h"
 #include "gromacs/mdtypes/md_enums.h"
@@ -136,6 +138,7 @@
 #include "gromacs/pulling/output.h"
 #include "gromacs/pulling/pull.h"
 #include "gromacs/swap/swapcoords.h"
+#include "gromacs/taskassignment/include/gromacs/taskassignment/decidesimulationworkload.h"
 #include "gromacs/timing/wallcycle.h"
 #include "gromacs/timing/walltime_accounting.h"
 #include "gromacs/topology/atoms.h"
@@ -1170,6 +1173,22 @@ void gmx::LegacySimulator::do_md()
             }
         }
 
+        if (bNS)
+        {
+            if (fr_->listedForcesGpu)
+            {
+                fr_->listedForcesGpu->updateHaveInteractions(top_->idef);
+            }
+            runScheduleWork_->domainWork = setupDomainLifetimeWorkload(
+                    *ir, *fr_, pullWork_, ed ? ed->getLegacyED() : nullptr, *md, simulationWork);
+        }
+
+        const int shellfcFlags = force_flags | (mdrunOptions_.verbose ? GMX_FORCE_ENERGY : 0);
+        const int legacyForceFlags = ((shellfc) ? shellfcFlags : force_flags) | (bNS ? GMX_FORCE_NS : 0);
+
+        runScheduleWork_->stepWork = setupStepWorkload(
+                legacyForceFlags, ir->mtsLevels, step, runScheduleWork_->domainWork, simulationWork);
+
         if (!simulationWork.useMdGpuGraph || mdGraph->graphIsCapturingThisStep()
             || !mdGraph->useGraphThisStep())
         {
@@ -1188,7 +1207,6 @@ void gmx::LegacySimulator::do_md()
                                     imdSession_,
                                     pullWork_,
                                     bNS,
-                                    force_flags,
                                     top_,
                                     constr_,
                                     enerd_,
@@ -1206,7 +1224,7 @@ void gmx::LegacySimulator::do_md()
                                     wallCycleCounters_,
                                     shellfc,
                                     fr_,
-                                    runScheduleWork_,
+                                    *runScheduleWork_,
                                     t,
                                     mu_tot,
                                     virtualSites_,
@@ -1255,13 +1273,12 @@ void gmx::LegacySimulator::do_md()
                          enerd_,
                          state_->lambda,
                          fr_,
-                         runScheduleWork_,
+                         *runScheduleWork_,
                          virtualSites_,
                          mu_tot,
                          t,
                          ed ? ed->getLegacyED() : nullptr,
                          fr_->longRangeNonbondeds.get(),
-                         (bNS ? GMX_FORCE_NS : 0) | force_flags,
                          ddBalanceRegionHandler);
             }
 

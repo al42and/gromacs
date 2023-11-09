@@ -124,13 +124,12 @@ void do_force(FILE*                               log,
               gmx_enerdata_t*                     enerd,
               gmx::ArrayRef<const real>           lambda,
               t_forcerec*                         fr,
-              gmx::MdrunScheduleWorkload*         runScheduleWork,
+              const gmx::MdrunScheduleWorkload&   runScheduleWork,
               gmx::VirtualSitesHandler*           vsite,
               rvec                                mu_tot,
               double                              t,
               gmx_edsam*                          ed,
               CpuPpLongRangeNonbondeds*           longRangeNonbondeds,
-              int                                 legacyFlags,
               const DDBalanceRegionHandler&       ddBalanceRegionHandler);
 
 /* Communicate coordinates (if parallel).

@@ -7,3 +7,20 @@ Improvements to |Gromacs| tools
    Also, please use the syntax :issue:`number` to reference issues on GitLab, without
    a space between the colon and number!
 
+Improved Einstein viscosity calculation in gmx energy
+"""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+Viscosity calcalution using the Einstein formula is convenient as this does
+not require extremely frequent pressure tensor data. However, the implementation
+of the calculation was inconvienent for long simulations and could take hours
+to complete. Improved stepping through the data reduces the computational time
+to minutes and provides much clearer output.
+
+XVG output from ``gmx rdf`` now uses 6 decimal places
+"""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+The output from ``gmx rdf`` now uses more decimal places in order to
+avoid rounding issues. These issues led to perceived erroneous shifts in
+the results.
+
+:issue:`4647`

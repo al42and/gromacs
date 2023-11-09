@@ -66,6 +66,7 @@
 #include "gromacs/imd/imd.h"
 #include "gromacs/linearalgebra/sparsematrix.h"
 #include "gromacs/listed_forces/listed_forces.h"
+#include "gromacs/listed_forces/listed_forces_gpu.h"
 #include "gromacs/math/functions.h"
 #include "gromacs/math/vec.h"
 #include "gromacs/mdlib/constr.h"
@@ -96,9 +97,11 @@
 #include "gromacs/mdtypes/md_enums.h"
 #include "gromacs/mdtypes/mdatom.h"
 #include "gromacs/mdtypes/mdrunoptions.h"
+#include "gromacs/mdtypes/multipletimestepping.h"
 #include "gromacs/mdtypes/observablesreducer.h"
 #include "gromacs/mdtypes/state.h"
 #include "gromacs/pbcutil/pbc.h"
+#include "gromacs/taskassignment/include/gromacs/taskassignment/decidesimulationworkload.h"
 #include "gromacs/timing/wallcycle.h"
 #include "gromacs/timing/walltime_accounting.h"
 #include "gromacs/topology/mtop_util.h"
@@ -1020,6 +1023,27 @@ void EnergyEvaluator::run(em_state_t* ems, rvec mu_tot, tensor vir, tensor pres,
 
     fr->longRangeNonbondeds->updateAfterPartition(*mdAtoms->mdatoms());
 
+    gmx_edsam* const ed = nullptr;
+
+    if (bNS)
+    {
+        if (fr->listedForcesGpu)
+        {
+            fr->listedForcesGpu->updateHaveInteractions(top->idef);
+        }
+        runScheduleWork->domainWork = setupDomainLifetimeWorkload(
+                *inputrec, *fr, pull_work, ed, *mdAtoms->mdatoms(), runScheduleWork->simulationWork);
+    }
+
+
+    const int legacyForceFlags = GMX_FORCE_STATECHANGED | GMX_FORCE_ALLFORCES | GMX_FORCE_VIRIAL
+                                 | GMX_FORCE_ENERGY | (bNS ? GMX_FORCE_NS : 0);
+    runScheduleWork->stepWork = setupStepWorkload(legacyForceFlags,
+                                                  inputrec->mtsLevels,
+                                                  step,
+                                                  runScheduleWork->domainWork,
+                                                  runScheduleWork->simulationWork);
+
     /* Calc force & energy on new trial position  */
     /* do_force always puts the charge groups in the box and shifts again
      * We do not unshift, so molecules are always whole in congrad.c
@@ -1047,14 +1071,12 @@ void EnergyEvaluator::run(em_state_t* ems, rvec mu_tot, tensor vir, tensor pres,
              enerd,
              ems->s.lambda,
              fr,
-             runScheduleWork,
+             *runScheduleWork,
              vsite,
              mu_tot,
              t,
-             nullptr,
+             ed,
              fr->longRangeNonbondeds.get(),
-             GMX_FORCE_STATECHANGED | GMX_FORCE_ALLFORCES | GMX_FORCE_VIRIAL | GMX_FORCE_ENERGY
-                     | (bNS ? GMX_FORCE_NS : 0),
              DDBalanceRegionHandler(cr));
 
     /* Clear the unused shake virial and pressure */
@@ -3354,9 +3376,8 @@ void LegacySimulator::do_nm()
         size_t atom = atom_index[aid];
         for (size_t d = 0; d < DIM; d++)
         {
-            int64_t step        = 0;
-            int     force_flags = GMX_FORCE_STATECHANGED | GMX_FORCE_ALLFORCES;
-            double  t           = 0;
+            int64_t step = 0;
+            double  t    = 0;
 
             x_min = state_work_x[atom][d];
 
@@ -3387,7 +3408,6 @@ void LegacySimulator::do_nm()
                                         imdSession_,
                                         pullWork_,
                                         bNS,
-                                        force_flags,
                                         top_,
                                         constr_,
                                         enerd_,
@@ -3405,7 +3425,7 @@ void LegacySimulator::do_nm()
                                         wallCycleCounters_,
                                         shellfc,
                                         fr_,
-                                        runScheduleWork_,
+                                        *runScheduleWork_,
                                         t,
                                         mu_tot,
                                         virtualSites_,

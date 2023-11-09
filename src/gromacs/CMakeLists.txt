@@ -190,8 +190,8 @@ if (GMX_GPU_CUDA)
     endif()
     if (GMX_NVSHMEM)
         set_target_properties(libgromacs PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-        # -fvisibility=hidden is required to be passed during device link phase to hide the 
-        # libnvshmem_device.a symbols in libgromacs in order to allow application/tests to link 
+        # -fvisibility=hidden is required to be passed during device link phase to hide the
+        # libnvshmem_device.a symbols in libgromacs in order to allow application/tests to link
         # libnvshmem_device.a for their nvshmem kernel as well while linking with libgromacs.
         # not setting this causes runtime failure.
         target_link_options(libgromacs PRIVATE $<DEVICE_LINK:-fvisibility=hidden>)
@@ -417,6 +417,8 @@ set_target_properties(libgromacs PROPERTIES
 gmx_manage_lmfit()
 target_link_libraries(libgromacs PRIVATE lmfit)
 target_link_libraries(libgromacs PRIVATE muparser::muparser)
+gmx_manage_colvars()
+target_link_libraries(libgromacs PRIVATE colvars)
 
 # Make sure we fix "everything" found by compilers that support that
 gmx_warn_on_everything(libgromacs)
@@ -450,8 +452,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 if (GMX_CLANG_TIDY)
+   # Temporarily exclude Colvars headers to silence warnings from code that is not built with GROMACS
+   # TODO: remove this when clang-tidy >= 14 is used
    set_target_properties(libgromacs PROPERTIES CXX_CLANG_TIDY
-       "${CLANG_TIDY_EXE};-warnings-as-errors=*")
+       "${CLANG_TIDY_EXE};-warnings-as-errors=*;-header-filter=^(?!.*src/external/colvars).*")
 endif()
 
 # TODO: Stop installing libgromacs. Possibly allow installation during deprecation period with GMX_INSTALL_LEGACY_API.

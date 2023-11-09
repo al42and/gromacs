@@ -662,6 +662,10 @@ static void pr_awh_bias(FILE* fp, int indent, const gmx::AwhBiasParams& awhBiasP
     PR(opt, awhBiasParams.targetBetaScaling());
     sprintf(opt, "%s-target-cutoff", prefix);
     PR(opt, awhBiasParams.targetCutoff());
+    sprintf(opt, "%s-target-metric-scaling", prefix);
+    PS(opt, EBOOL(awhBiasParams.scaleTargetByMetric()));
+    sprintf(opt, "%s-target-metric-scaling-limit", prefix);
+    PR(opt, awhBiasParams.targetMetricScalingLimit());
     sprintf(opt, "%s-user-data", prefix);
     PS(opt, EBOOL(awhBiasParams.userPMFEstimate()));
     sprintf(opt, "%s-share-group", prefix);
@@ -852,6 +856,7 @@ void pr_inputrec(FILE* fp, int indent, const char* title, const t_inputrec* ir, 
                 PI(factorKey.c_str(), mtsLevel.stepFactor);
             }
         }
+        PR("mass-repartition-factor", ir->massRepartitionFactor);
         PS("comm-mode", enumValueToString(ir->comm_mode));
         PI("nstcomm", ir->nstcomm);
 
@@ -1441,6 +1446,7 @@ void cmp_inputrec(FILE* fp, const t_inputrec* ir1, const t_inputrec* ir2, real f
                 ir1->mtsLevels[1].stepFactor,
                 ir2->mtsLevels[1].stepFactor);
     }
+    cmp_real(fp, "inputrec->massRepartitionFactor", -1, ir1->massRepartitionFactor, ir2->massRepartitionFactor, ftol, abstol);
     cmp_int(fp, "inputrec->pbcType", -1, static_cast<int>(ir1->pbcType), static_cast<int>(ir2->pbcType));
     cmp_bool(fp, "inputrec->bPeriodicMols", -1, ir1->bPeriodicMols, ir2->bPeriodicMols);
     cmpEnum(fp, "inputrec->cutoff_scheme", ir1->cutoff_scheme, ir2->cutoff_scheme);
