@@ -354,10 +354,6 @@ int main(int argc, char* argv[])
                   << typeid(std::decay_t<decltype(param.parametersA[0])>).name() << std::endl;
     };
 
-    // nblib::for_each_tuple(printStats, interactions);
-    // printf("\n");
-    // nblib::for_each_tuple(printStats, interactions);
-
     testNblib(interactions, tpr.coordinates_, tpr.charges_, tpr.getBox(), 1, numthreads);
     testGmx(*idef, *ffparams, tpr.coordinates_, tpr.charges_, tpr.getBox(), 1, numthreads);
     compareForces(interactions,
@@ -367,24 +363,31 @@ int main(int argc, char* argv[])
                   tpr.charges_,
                   tpr.getBox(),
                   numthreads);
-
-    // std::cout << std::endl;
+    std::cout << std::endl;
 
     int                    numParticles = 5003;
     nblib::LinearChainData linearChain(numParticles);
     std::vector<real>      zeroQ(linearChain.x.size(), 0);
+    auto [linear_idef, linear_ffparams] = convertToGmxInteractions(linearChain.interactions);
 
-    // testNblib(linearChain.interactions, linearChain.x, zeroQ, linearChain.box, 100, 4);
-    // testGmx(linearChain.interactions, linearChain.x, zeroQ, linearChain.box, 100, 4);
-    // compareForces(linearChain.interactions, linearChain.interactions, linearChain.x, zeroQ,
-    // linearChain.box, 4); std::cout << std::endl;
+    testNblib(linearChain.interactions, linearChain.x, zeroQ, linearChain.box, 100, 4);
+    testGmx(*linear_idef, *linear_ffparams, linearChain.x, zeroQ, linearChain.box, 100, 4);
+    compareForces(linearChain.interactions,
+                  *linear_idef,
+                  *linear_ffparams,
+                  linearChain.x,
+                  zeroQ,
+                  linearChain.box,
+                  4);
+    std::cout << std::endl;
 
     // Note: this test case needs double precision for forces to match precisely
     nblib::PolyDimethylButene polyData(100);
     zeroQ.resize(polyData.x.size(), 0);
+    auto [poly_idef, poly_ffparams] = convertToGmxInteractions(polyData.interactions);
 
     // run benchmarks, correctness only visible in the potential energy
-    // testNblib(polyData.interactions, polyData.x, zeroQ, polyData.box, 1, 4);
-    // testGmx(polyData.interactions, polyData.x, zeroQ, polyData.box, 1, 4);
-    // compareForces(polyData.interactions, polyData.interactions, polyData.x, zeroQ, polyData.box, 4);
+    testNblib(polyData.interactions, polyData.x, zeroQ, polyData.box, 1, 4);
+    testGmx(*poly_idef, *poly_ffparams, polyData.x, zeroQ, polyData.box, 1, 4);
+    compareForces(polyData.interactions, *poly_idef, *poly_ffparams, polyData.x, zeroQ, polyData.box, 4);
 }
