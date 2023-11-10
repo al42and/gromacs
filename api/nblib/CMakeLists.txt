@@ -76,29 +76,29 @@ set_target_properties(nblib PROPERTIES
         OUTPUT_NAME "nblib_gmx")
 
 if (GMX_GPU_CUDA)
-        find_package(CUDAToolkit)
-        target_link_libraries(nblib PRIVATE CUDA::cudart)
+    find_package(CUDAToolkit)
+    target_link_libraries(nblib PRIVATE CUDA::cudart)
 
-        enable_language(CUDA)
-        set(CMAKE_CUDA_ARCHITECTURES OFF)
-        set(CMAKE_CUDA_STANDARD 17)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_ARCHITECTURES OFF)
+    set(CMAKE_CUDA_STANDARD 17)
 
-        # need to give sources here for this function to work
-        #gmx_cuda_add_library(integrator integrator_gpu_internal.cu)
-        add_library(integrator integrator_gpu_internal.cu)
+    # need to give sources here for this function to work
+    #gmx_cuda_add_library(integrator integrator_gpu_internal.cu)
+    add_library(integrator integrator_gpu_internal.cu)
 
-        target_sources(nblib
-                PRIVATE
-                gmxcalculatorgpu.cpp
-                integrator_gpu.cpp)
-        target_link_libraries(nblib PRIVATE integrator)
+    target_sources(nblib
+            PRIVATE
+            gmxcalculatorgpu.cpp
+            integrator_gpu.cpp)
+    target_link_libraries(nblib PRIVATE integrator)
 
-        set_property(TARGET integrator PROPERTY CUDA_ARCHITECTURES "35;60;70;75;80")
+    set_property(TARGET integrator PROPERTY CUDA_ARCHITECTURES "35;60;70;75;80")
 
-        target_include_directories(integrator PRIVATE ${PROJECT_SOURCE_DIR}/api)
-        target_compile_options(integrator PRIVATE -Wno-deprecated-gpu-targets)
+    target_include_directories(integrator PRIVATE ${PROJECT_SOURCE_DIR}/api)
+    target_compile_options(integrator PRIVATE -Wno-deprecated-gpu-targets)
 
-        target_link_libraries(integrator PRIVATE
+    target_link_libraries(integrator PRIVATE
 	  CUDA::cudart
 	  libgromacs
 	  common
@@ -106,6 +106,17 @@ if (GMX_GPU_CUDA)
 	  legacy_modules
 	  utility
 	  )
+    if(GMX_USE_cuFFTMp OR GMX_NVSHMEM)
+        # We need to PUBLIC link to the stub libraries nvml/cuda to WAR an issue
+        # with `bfd` linker which expects you always have dependencies on the link line.
+        # Also leaking path via the -rpath does not work with a stub library as the SONAME
+        # present inside these stub library (used by runtime) is *.so.1 instead of *.so as these
+        # stub library are meant only for compile time and the runtime version is a driver provided
+        # version which is not present on the system where driver is not installed.
+        # At some future release cmake will provide a workaround for this under the hood at which
+        # point we can use PRIVATE linking for these libs until then we stick with PUBLIC linking.
+        target_link_libraries(nblib PUBLIC CUDA::nvml CUDA::cuda_driver)
+    endif()
 endif()
 
 target_sources(nblib
