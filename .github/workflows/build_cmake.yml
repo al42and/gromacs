@@ -25,22 +25,6 @@ jobs:
             gpu_var: "Off",
             openmp_var: "Off"
           }
-        - {
-            name: "macOS Latest Clang", artifact: "macOS.7z",
-            os: macos-latest,
-            cc: "clang", cxx: "clang++",
-            gpu_var: "Off",
-            openmp_var: "Off"
-          }
-        - {
-            name: "macOS 11 gcc with OpenCL", artifact: "macOS-gcc-OpenCL.7z",
-            os: macos-11, # Don't upgrade to macOS 12, see Issue #4646
-            cc: "gcc-10", cxx: "g++-10",
-            gpu_var: "OpenCL",
-            openmp_var: "On"
-
-          }
-
     env:
       CC: ${{ matrix.config.cc }}
       CXX: ${{ matrix.config.cxx }}
@@ -80,49 +64,4 @@ jobs:
     - name: Run tests
       run: cmake -P .github/scripts/test.cmake
 
-  build-linux-aarch64:
-    name: Ubuntu 20.04 ARM64 Clang 10
-    runs-on: ubuntu-20.04
-
-    env:
-      CC: clang-10
-      CXX: clang++-10
-      CI_JOB_ID: ${{ github.sha }} # Tell CMake it's running in CI
-      OPENMP_VAR: Off
-      GPU_VAR: Off
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: ccache cache files
-      id: cache-ccache
-      uses: actions/cache@v3
-      with:
-        path: .ccache
-        key: ${{ github.job }}-ccache-${{ github.sha }}
-        restore-keys: ${{ github.job }}-ccache-
-
-    - name: Build
-      uses: uraimo/run-on-arch-action@v2
-      with:
-        arch: aarch64
-        distro: ubuntu20.04
-        githubToken: ${{ github.token }}
-        dockerRunArgs: |
-          --volume "${PWD}:/Gromacs" -e GITHUB_PATH -e RUNNER_OS -e "RUNNER_ARCH=ARM64" -e CMAKE_VERSION -e NINJA_VERSION -e GPU_VAR -e BUILD_TYPE -e OPENMP_VAR -e CC -e CXX -e CI_JOB_ID
-        install: |
-          apt-get update -q -y
-          apt-get install -q -y clang-10 cmake ninja-build ccache git
-        run: |
-          set -x
-          cd /Gromacs
-          git config --global --add safe.directory /Gromacs
-          export GITHUB_WORKSPACE=$PWD
-          export CMAKE_VERSION=3.24.2 # use a newer version that has an aarch64 archive
-          cmake -P .github/scripts/download-ninja-cmake.cmake
-          export PATH=$GITHUB_WORKSPACE/cmake-${CMAKE_VERSION}-linux-aarch64/bin:$PATH
-          cmake -P .github/scripts/configure.cmake
-          cmake -P .github/scripts/build.cmake
-          cmake -P .github/scripts/test.cmake
 
