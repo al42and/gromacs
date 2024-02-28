@@ -140,6 +140,8 @@ if(CMAKE_CONFIGURATION_TYPES)
 endif()
 set(build_types_with_explicit_flags RELEASE DEBUG RELWITHDEBINFO RELWITHASSERT MINSIZEREL PROFILE)
 
+include(CheckIPOSupported)
+
 set_property(GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS ON)
 
 include(gmxCTestUtilities)
