@@ -23,7 +23,7 @@ jobs:
             cc: "cl", cxx: "cl",
             environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
             gpu_var: "Off",
-            openmp_var: "Off"
+            openmp_var: "On"
           }
         - {
             name: "macOS Latest Clang", artifact: "macOS.7z",
