@@ -129,7 +129,7 @@ private:
 
 TEST_F(ColorMapTest, CanReadFromFile)
 {
-    auto mappingData = readcmap(referenceFilename().u8string().c_str());
+    auto mappingData = readcmap(referenceFilename().c_str());
     ASSERT_EQ(mappingData.size(), referenceMap().size());
     for (int i = 0; i < gmx::ssize(mappingData); ++i)
     {
@@ -154,7 +154,7 @@ TEST_F(ColorMapTest, CanReadFromFile)
 
 TEST_F(ColorMapTest, CanWriteToFile)
 {
-    FILE* out = fopen(testFilename().u8string().c_str(), "w");
+    FILE* out = fopen(testFilename().c_str(), "w");
     printcmap(out, referenceMap().size(), referenceMap().data());
     fclose(out);
     gmx::test::StringTestBase::testFilesEqual(referenceFilename(), testFilename());
@@ -162,10 +162,10 @@ TEST_F(ColorMapTest, CanWriteToFile)
 
 TEST_F(ColorMapTest, RoundTrip)
 {
-    FILE* out = fopen(testFilename().u8string().c_str(), "w");
+    FILE* out = fopen(testFilename().c_str(), "w");
     printcmap(out, referenceMap().size(), referenceMap().data());
     fclose(out);
-    auto mappingData = readcmap(testFilename().u8string().c_str());
+    auto mappingData = readcmap(testFilename().c_str());
     for (int i = 0; i < gmx::ssize(mappingData); ++i)
     {
         // Depending on what is in the reference structure,
@@ -261,7 +261,7 @@ private:
 TEST_F(MatioTest, CanWriteToFile)
 {
     auto  reference = generateReferenceMatrix4x3();
-    FILE* out       = fopen(referenceFilename().u8string().c_str(), "w");
+    FILE* out       = fopen(referenceFilename().c_str(), "w");
     EXPECT_NO_THROW(write_xpm_m(out, reference));
     fclose(out);
 }
@@ -298,13 +298,13 @@ TEST_F(MatioTest, CanReadSingleMatrixAfterWriting)
 {
     auto reference = generateReferenceMatrix4x3();
     {
-        FILE* out = fopen(referenceFilename().u8string().c_str(), "w");
+        FILE* out = fopen(referenceFilename().c_str(), "w");
         ASSERT_NO_THROW(write_xpm_m(out, reference));
         fclose(out);
     }
 
     std::vector<t_matrix> reading;
-    ASSERT_NO_THROW(reading = read_xpm_matrix(referenceFilename().u8string().c_str()));
+    ASSERT_NO_THROW(reading = read_xpm_matrix(referenceFilename().c_str()));
     ASSERT_EQ(reading.size(), 1);
     for (int i = 0; i < gmx::ssize(reading); ++i)
     {
