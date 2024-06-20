@@ -50,7 +50,6 @@
 #include <string.h>
 #include "types.h"
 #include "xdr.h"
-#include <libintl.h>
 #include <limits.h>
 #include <wchar.h>
 

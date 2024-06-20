@@ -49,13 +49,10 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
-#include <libintl.h>
-#include <wchar.h>
 #include <stdint.h>
 
 #include "types.h"
 #include "xdr.h"
-// #include <shlib-compat.h>
 
 
 /*
