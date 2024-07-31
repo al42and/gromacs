@@ -3,10 +3,10 @@ name: CMake Build Matrix
 on: [push, pull_request]
 
 env:
-  CMAKE_VERSION: 3.18.4
-  NINJA_VERSION: 1.10.1
+  CMAKE_VERSION: 3.28.0 # Oldest supported
+  NINJA_VERSION: 1.12.1 # Latest
   BUILD_TYPE: Release
-  CCACHE_VERSION: 3.7.7
+  CCACHE_VERSION: 4.10.2 # Latest
   NINJA_STATUS: "[%f/%t %o/sec] "
 
 jobs:
@@ -19,11 +19,11 @@ jobs:
         config:
         - {
             name: "Windows Latest MSVC", artifact: "Windows-MSVC.7z",
-            os: windows-2019,
+            os: windows-2022,
             cc: "cl", cxx: "cl",
             environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
             gpu_var: "Off",
-            openmp_var: "Off"
+            openmp_var: "On"
           }
         - {
             name: "macOS Latest Clang", artifact: "macOS.7z",
@@ -33,12 +33,11 @@ jobs:
             openmp_var: "Off"
           }
         - {
-            name: "macOS 14 on ARM gcc with OpenCL", artifact: "macOS-gcc-OpenCL.7z",
-            os: macos-14,
+            name: "macOS Latest GCC 14 with OpenCL", artifact: "macOS-gcc-OpenCL.7z",
+            os: macos-latest,
             cc: "gcc-14", cxx: "g++-14",
             gpu_var: "OpenCL",
             openmp_var: "On"
-
           }
 
     env:
