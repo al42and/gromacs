@@ -59,7 +59,7 @@
 
 
 
-int tMPI_Scan(void* sendbuf, void* recvbuf, int count,
+int tMPI_Scan(const void* sendbuf, void* recvbuf, int count,
               tMPI_Datatype datatype, tMPI_Op op, tMPI_Comm comm)
 {
     struct tmpi_thread *cur    = tMPI_Get_current();
@@ -95,7 +95,8 @@ int tMPI_Scan(void* sendbuf, void* recvbuf, int count,
     /* now wait for the previous rank to finish */
     if (myrank > 0)
     {
-        void *a, *b;
+        void *a;
+        const void *b;
         int   ret;
 
 #if defined(TMPI_PROFILE) && defined(TMPI_CYCLE_COUNT)

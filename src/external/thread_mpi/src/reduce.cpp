@@ -58,7 +58,7 @@
 #include "collective.h"
 
 
-int tMPI_Reduce_run_op(void *dest, void *src_a, void *src_b,
+int tMPI_Reduce_run_op(void *dest, const void *src_a, const void *src_b,
                        tMPI_Datatype datatype, int count, tMPI_Op op,
                        tMPI_Comm comm)
 {
@@ -72,7 +72,7 @@ int tMPI_Reduce_run_op(void *dest, void *src_a, void *src_b,
     return TMPI_SUCCESS;
 }
 
-int tMPI_Reduce_fast(void* sendbuf, void* recvbuf, int count,
+int tMPI_Reduce_fast(const void* sendbuf, void* recvbuf, int count,
                      tMPI_Datatype datatype, tMPI_Op op, int root,
                      tMPI_Comm comm)
 {
@@ -130,7 +130,8 @@ int tMPI_Reduce_fast(void* sendbuf, void* recvbuf, int count,
         /* check if I'm the reducing thread in this iteration's pair: */
         if (myrank_rtr%stepping == 0)
         {
-            void *a, *b;
+            const void *a;
+            void *b;
             int   ret;
 
             /* now wait for my neighbor's data to become ready.
@@ -241,7 +242,7 @@ int tMPI_Reduce_fast(void* sendbuf, void* recvbuf, int count,
     return TMPI_SUCCESS;
 }
 
-int tMPI_Reduce(void* sendbuf, void* recvbuf, int count,
+int tMPI_Reduce(const void* sendbuf, void* recvbuf, int count,
                 tMPI_Datatype datatype, tMPI_Op op, int root, tMPI_Comm comm)
 {
     struct tmpi_thread *cur    = tMPI_Get_current();
@@ -281,7 +282,7 @@ int tMPI_Reduce(void* sendbuf, void* recvbuf, int count,
     return ret;
 }
 
-int tMPI_Allreduce(void* sendbuf, void* recvbuf, int count,
+int tMPI_Allreduce(const void* sendbuf, void* recvbuf, int count,
                    tMPI_Datatype datatype, tMPI_Op op, tMPI_Comm comm)
 {
     void               *rootbuf = NULL; /* root process' receive buffer */
