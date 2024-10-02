@@ -761,11 +761,13 @@ struct CompileTimeStringJoin
     // Join all strings into a single std::array of chars
     static constexpr auto impl() noexcept
     {
-        constexpr std::size_t              bufferLength = (inputStrings.size() + ... + 0);
-        std::array<char, bufferLength + 1> internalStorage;
+        constexpr std::size_t              bufferLength = (std::size(inputStrings) + ... + 0);
+        std::array<char, bufferLength + 1> internalStorage{};
         auto append = [i = 0, &internalStorage](auto const& string) mutable {
             for (auto charPos : string)
+            {
                 internalStorage[i++] = charPos;
+            }
         };
         (append(inputStrings), ...);
         internalStorage[bufferLength] = 0;
