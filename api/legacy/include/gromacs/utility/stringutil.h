@@ -45,6 +45,7 @@
 #include <cstdarg>
 #include <cstring>
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -761,7 +762,7 @@ struct CompileTimeStringJoin
     static constexpr auto impl() noexcept
     {
         constexpr std::size_t              bufferLength = (inputStrings.size() + ... + 0);
-        std::array<char, bufferLength + 1> internalStorage{};
+        std::array<char, bufferLength + 1> internalStorage;
         auto append = [i = 0, &internalStorage](auto const& string) mutable {
             for (auto charPos : string)
                 internalStorage[i++] = charPos;
