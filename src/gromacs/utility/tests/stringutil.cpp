@@ -47,6 +47,7 @@
 #include "gromacs/utility/stringutil.h"
 
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -466,6 +467,18 @@ TEST_F(TextLineWrapperTest, WrapsCorrectlyWithExtraWhitespace)
 
     wrapper.settings().setKeepFinalSpaces(true);
     checkText(wrapper.wrapToString(g_wrapTextWhitespace), "WrappedAt14WithTrailingWhitespace");
+}
+
+TEST(CompileTimeStringJoin, Works)
+{
+    static constexpr std::string_view firstLiteral  = "Hello";
+    static constexpr std::string_view secondLiteral = " World";
+    static constexpr std::string_view thirdLiteral  = ", GROMACS";
+
+    static constexpr auto combinedString =
+            gmx::CompileTimeStringJoin_v<firstLiteral, secondLiteral, thirdLiteral>;
+
+    EXPECT_STREQ(std::string(combinedString).c_str(), "Hello World, GROMACS");
 }
 
 } // namespace

@@ -753,6 +753,32 @@ private:
 
 //! \}
 
+
+template<std::string_view const&... inputStrings>
+struct CompileTimeStringJoin
+{
+    // Join all strings into a single std::array of chars
+    static constexpr auto impl() noexcept
+    {
+        constexpr std::size_t              bufferLength = (inputStrings.size() + ... + 0);
+        std::array<char, bufferLength + 1> internalStorage{};
+        auto append = [i = 0, &internalStorage](auto const& string) mutable {
+            for (auto charPos : string)
+                internalStorage[i++] = charPos;
+        };
+        (append(inputStrings), ...);
+        internalStorage[bufferLength] = 0;
+        return internalStorage;
+    }
+    // Give the joined string static storage
+    static constexpr auto stringArray = impl();
+    // View as a std::string_view
+    static constexpr std::string_view value{ stringArray.data(), stringArray.size() - 1 };
+};
+// Helper to get the value out
+template<std::string_view const&... inputStrings>
+static constexpr auto CompileTimeStringJoin_v = CompileTimeStringJoin<inputStrings...>::value;
+
 } // namespace gmx
 
 #endif
