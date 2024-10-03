@@ -475,10 +475,12 @@ TEST(CompileTimeStringJoin, Works)
     static constexpr std::string_view secondLiteral = " World";
     static constexpr std::string_view thirdLiteral  = ", GROMACS";
 
-    static constexpr auto combinedString =
+    static constexpr std::string_view combinedString =
             gmx::CompileTimeStringJoin_v<firstLiteral, secondLiteral, thirdLiteral>;
+    static_assert(combinedString.size() == 20);
+    static_assert(combinedString == std::string_view{ "Hello World, GROMACS" });
 
-    EXPECT_STREQ(std::string(combinedString).c_str(), "Hello World, GROMACS");
+    EXPECT_EQ(std::string(combinedString), "Hello World, GROMACS");
 }
 
 } // namespace
