@@ -66,6 +66,19 @@
 namespace gmx
 {
 
+// These functions help hipcc to generate faster code for loads and atomic operations where
+// 64-bit scalar + 32-bit vector registers are used instead of 64-bit vector saving a few
+// instructions for computing 64-bit vector addresses.
+template<typename T>
+static __forceinline__ __device__ const T& nbnxmFastLoad(const T*     buffer,
+                                                         unsigned int idx,
+                                                         unsigned int offset = 0)
+{
+    return *reinterpret_cast<const T*>(reinterpret_cast<const char*>(buffer)
+                                       + idx * static_cast<unsigned int>(sizeof(T))
+                                       + offset * static_cast<unsigned int>(sizeof(T)));
+}
+
 static __forceinline__ __device__ void
 atomic_add_force(float3* buffer, unsigned int idx, unsigned int component, float value)
 {
@@ -74,6 +87,22 @@ atomic_add_force(float3* buffer, unsigned int idx, unsigned int component, float
                                           + component * static_cast<unsigned int>(sizeof(float)))),
               value);
 }
+
+template<typename ValueType>
+class AmdFastBuffer
+{
+private:
+    const ValueType* buffer;
+
+public:
+    __forceinline__ __device__ AmdFastBuffer(const ValueType* buffer) : buffer(buffer) {}
+    template<typename T, std::enable_if_t<std::is_integral<T>::value, bool> = true>
+    __forceinline__ __device__ const ValueType& operator[](T idx) const
+    {
+        return nbnxmFastLoad(buffer, idx);
+    }
+};
+
 
 template<PairlistType pairlistType>
 __device__ constexpr int c_subWarp = sc_gpuParallelExecutionWidth(pairlistType);

@@ -119,7 +119,7 @@ static const std::string getKernelName()
 
 __device__ static inline float2 fetchNbfpC6C12(const float2* nbfpComb, unsigned int type)
 {
-    return amdFastLoad(nbfpComb, type);
+    return nbnxmFastLoad(nbfpComb, type);
 }
 
 
@@ -173,16 +173,16 @@ __device__ static inline float calculateLJEwaldC6Grid(const Float2* nbfpComb, co
 
     if constexpr (vdwType == VdwType::EwaldGeom)
     {
-        const float c6_i = amdFastLoad(nbfpComb, typeI).x;
-        const float c6_j = amdFastLoad(nbfpComb, typeJ).x;
+        const float c6_i = nbnxmFastLoad(nbfpComb, typeI).x;
+        const float c6_j = nbnxmFastLoad(nbfpComb, typeJ).x;
         return c6_i * c6_j;
     }
     else
     {
         static_assert(vdwType == VdwType::EwaldLB);
         /* sigma and epsilon are scaled to give 6*C6 */
-        const Float2 c6c12_i = amdFastLoad(nbfpComb, typeI);
-        const Float2 c6c12_j = amdFastLoad(nbfpComb, typeJ);
+        const Float2 c6c12_i = nbnxmFastLoad(nbfpComb, typeI);
+        const Float2 c6c12_j = nbnxmFastLoad(nbfpComb, typeJ);
 
         const float sigma   = c6c12_i.x + c6c12_j.x;
         const float epsilon = c6c12_i.y * c6c12_j.y;
@@ -303,7 +303,7 @@ __device__ static inline float pmeCorrF(const float z2)
  */
 __device__ static inline float2 fetchCoulombForceR(const float* coulombTable, unsigned int index)
 {
-    return { amdFastLoad(coulombTable, index), amdFastLoad(coulombTable, index + 1) };
+    return { nbnxmFastLoad(coulombTable, index), nbnxmFastLoad(coulombTable, index + 1) };
 }
 
 /*! \brief Interpolate Ewald coulomb force correction using the F*r table. */
@@ -586,24 +586,24 @@ __launch_bounds__(c_clSizeSq<pairlistType>* nthreadZ, minBlocksPerMp) __global__
         using NbnxmExcl     = nbnxn_excl_t;
         using NbnxmCjPacked = nbnxn_cj_packed_t;
 
-        const float4*      gm_xq                = atdat.xq;
-        float3*            gm_f                 = asFloat3(atdat.f);
-        float3*            gm_shiftVec          = asFloat3(atdat.shiftVec);
-        float3*            gm_fShift            = asFloat3(atdat.fShift);
-        float*             gm_energyElec        = atdat.eElec;
-        float*             gm_energyVdw         = atdat.eLJ;
-        NbnxmCjPacked*     gm_plistCJPacked     = plist.cjPacked;
-        const nbnxn_sci_t* gm_plistSci          = doPruneNBL ? plist.sci : plist.sorting.sciSorted;
-        int*               gm_plistSciHistogram = plist.sorting.sciHistogram;
-        int*               gm_sciCount          = plist.sorting.sciCount;
+        AmdFastBuffer<const float4> gm_xq{ atdat.xq };
+        float3*                     gm_f             = asFloat3(atdat.f);
+        float3*                     gm_shiftVec      = asFloat3(atdat.shiftVec);
+        float3*                     gm_fShift        = asFloat3(atdat.fShift);
+        float*                      gm_energyElec    = atdat.eElec;
+        float*                      gm_energyVdw     = atdat.eLJ;
+        NbnxmCjPacked*              gm_plistCJPacked = plist.cjPacked;
+        AmdFastBuffer<const nbnxn_sci_t> gm_plistSci{ doPruneNBL ? plist.sci : plist.sorting.sciSorted };
+        int* gm_plistSciHistogram = plist.sorting.sciHistogram;
+        int* gm_sciCount          = plist.sorting.sciCount;
 
 
-        const NbnxmExcl* gm_plistExcl  = plist.excl;
-        const Float2*    gm_ljComb     = atdat.ljComb;        /* used iff ljComb<vdwType> */
-        const int*       gm_atomTypes  = atdat.atomTypes;     /* used iff !ljComb<vdwType> */
-        const Float2*    gm_nbfp       = nbparam.nbfp;        /* used iff !ljComb<vdwType> */
-        const Float2*    gm_nbfpComb   = nbparam.nbfp_comb;   /* used iff ljEwald<vdwType> */
-        const float*     gm_coulombTab = nbparam.coulomb_tab; /* used iff elecEwaldTab<elecType> */
+        AmdFastBuffer<const NbnxmExcl> gm_plistExcl{ plist.excl };
+        AmdFastBuffer<const Float2>    gm_ljComb{ atdat.ljComb }; /* used iff ljComb<vdwType> */
+        AmdFastBuffer<const int> gm_atomTypes{ atdat.atomTypes }; /* used iff !ljComb<vdwType> */
+        const Float2*            gm_nbfp     = nbparam.nbfp;      /* used iff !ljComb<vdwType> */
+        const Float2*            gm_nbfpComb = nbparam.nbfp_comb; /* used iff ljEwald<vdwType> */
+        const float* gm_coulombTab = nbparam.coulomb_tab; /* used iff elecEwaldTab<elecType> */
 
         const int             numTypes        = atdat.numTypes;
         const float           rCoulombSq      = nbparam.rcoulomb_sq;
@@ -674,8 +674,8 @@ __launch_bounds__(c_clSizeSq<pairlistType>* nthreadZ, minBlocksPerMp) __global__
         const int         cijPackedBegin = nbSci.cjPackedBegin;
         const int         cijPackedEnd   = nbSci.cjPackedEnd;
 
-        /*! i-cluster interaction mask for a super-cluster with all c_nbnxnGpuNumClusterPerSupercluster=8 bits set */
-        const unsigned superClInteractionMask = ((1U << c_clusterPerSuperCluster) - 1U);
+        /*! i-cluster interaction mask for a super-cluster with all c_clusterPerSuperCluster bits set */
+        constexpr unsigned superClInteractionMask = ((1U << c_clusterPerSuperCluster) - 1U);
 
         // Only needed if props.elecEwaldAna
         const float beta2 = ewaldBeta * ewaldBeta;

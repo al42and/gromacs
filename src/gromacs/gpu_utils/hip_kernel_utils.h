@@ -87,10 +87,10 @@ static __forceinline__ __device__ T fetchFromParamLookupTable(const T*          
  * \returns    The data at the desired location.
  */
 template<typename T>
-static __forceinline__ __device__ T amdFastLoad(const T* data, const unsigned int index)
+static __forceinline__ __device__ T fastLoad(T* data, const int offset)
 {
     static constexpr int size = sizeof(T);
-    return *reinterpret_cast<const T*>(reinterpret_cast<const char*>(data) + (size * index));
+    return *reinterpret_cast<T*>(reinterpret_cast<const char*>(data) + (size * offset));
 }
 
 #define LAUNCH_BOUNDS_EXACT(WORK_GROUP_SIZE, WAVES_PER_EU)                        \

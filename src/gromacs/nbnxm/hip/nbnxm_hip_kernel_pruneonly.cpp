@@ -117,7 +117,7 @@ __launch_bounds__(c_clSizeSq<pairlistType>* threadZ, minBlocksPp) __global__
         float4*                sm_xqBufferPtr = reinterpret_cast<float4*>(sm_nextSlotPtr);
         sm_nextSlotPtr += incrementSharedMemorySlotPtr<pairlistType, float4>();
 
-        const float4* xq = atdat.xq;
+        AmdFastBuffer<const float4> xq{ atdat.xq };
 
         // my i super-cluster's index = sciOffset + current bidx * numParts + part
         const nbnxn_sci_t nbSci          = plistSci[bidx * numParts + part];
