@@ -96,8 +96,8 @@ private:
 
 public:
     __forceinline__ __device__ AmdFastBuffer(const ValueType* buffer) : buffer(buffer) {}
-    template<typename T, std::enable_if_t<std::is_integral<T>::value, bool> = true>
-    __forceinline__ __device__ const ValueType& operator[](T idx) const
+    template<typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
+    __forceinline__ __device__ const ValueType& operator[](IndexType idx) const
     {
         return nbnxmFastLoad(buffer, idx);
     }
