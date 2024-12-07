@@ -201,10 +201,7 @@ static void get_vsite_masses(const gmx_moltype_t&  moltype,
                 {
                     const int aj = ilist.iatoms[i + 1 + j];
                     cam[j]       = getMass(moltype.atoms, aj, setMassesToOne);
-                    if (cam[j] == 0)
-                    {
-                        cam[j] = vsite_m[aj];
-                    }
+                    cam[j]       = (cam[j] == 0) ? vsite_m[aj] : cam[j];
                     /* A vsite should be constructed from normal atoms or
                      * vsites of lower complexity, which we have processed
                      * in a previous iteration.
