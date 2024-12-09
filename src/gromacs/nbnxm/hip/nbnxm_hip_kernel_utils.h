@@ -66,19 +66,27 @@
 namespace gmx
 {
 
-// These functions help hipcc to generate faster code for loads and atomic operations where
-// 64-bit scalar + 32-bit vector registers are used instead of 64-bit vector saving a few
-// instructions for computing 64-bit vector addresses.
+/*!\brief Helper method to generate faster loads.
+ *
+ * This method helps hipcc (as late as of rocm 6.2.2, hipcc 6.2.41134-65d174c3e and likely later)
+ * to generate faster code for loads where 64-bit scalar + 32-bit vector registers are used instead
+ * of 64-bit vector versions, saving a few instructions for computing 64-bit vector addresses.
+ */
 template<typename T>
-static __forceinline__ __device__ const T& nbnxmFastLoad(const T*     buffer,
-                                                         unsigned int idx,
-                                                         unsigned int offset = 0)
+static __forceinline__ __device__ const T& amdNbnxmFastLoad(const T*     buffer,
+                                                            unsigned int idx,
+                                                            unsigned int offset = 0)
 {
     return *reinterpret_cast<const T*>(reinterpret_cast<const char*>(buffer)
                                        + idx * static_cast<unsigned int>(sizeof(T))
                                        + offset * static_cast<unsigned int>(sizeof(T)));
 }
 
+/*!\brief Helper method to generate faster atomic operations.
+ *
+ * This method helps hipcc (as late as of rocm 6.2.2, hipcc 6.2.41134-65d174c3e and likely later)
+ * to generate faster code for atomic operations involving 64bit scaler and 32bit vector registers.
+ */
 static __forceinline__ __device__ void
 atomic_add_force(float3* buffer, unsigned int idx, unsigned int component, float value)
 {
@@ -99,7 +107,7 @@ public:
     template<typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
     __forceinline__ __device__ const ValueType& operator[](IndexType idx) const
     {
-        return nbnxmFastLoad(buffer, idx);
+        return amdNbnxmFastLoad(buffer, idx);
     }
 };
 

@@ -119,7 +119,7 @@ static const std::string getKernelName()
 
 __device__ static inline float2 fetchNbfpC6C12(const float2* nbfpComb, unsigned int type)
 {
-    return nbnxmFastLoad(nbfpComb, type);
+    return amdNbnxmFastLoad(nbfpComb, type);
 }
 
 
@@ -173,16 +173,16 @@ __device__ static inline float calculateLJEwaldC6Grid(const Float2* nbfpComb, co
 
     if constexpr (vdwType == VdwType::EwaldGeom)
     {
-        const float c6_i = nbnxmFastLoad(nbfpComb, typeI).x;
-        const float c6_j = nbnxmFastLoad(nbfpComb, typeJ).x;
+        const float c6_i = amdNbnxmFastLoad(nbfpComb, typeI).x;
+        const float c6_j = amdNbnxmFastLoad(nbfpComb, typeJ).x;
         return c6_i * c6_j;
     }
     else
     {
         static_assert(vdwType == VdwType::EwaldLB);
         /* sigma and epsilon are scaled to give 6*C6 */
-        const Float2 c6c12_i = nbnxmFastLoad(nbfpComb, typeI);
-        const Float2 c6c12_j = nbnxmFastLoad(nbfpComb, typeJ);
+        const Float2 c6c12_i = amdNbnxmFastLoad(nbfpComb, typeI);
+        const Float2 c6c12_j = amdNbnxmFastLoad(nbfpComb, typeJ);
 
         const float sigma   = c6c12_i.x + c6c12_j.x;
         const float epsilon = c6c12_i.y * c6c12_j.y;
@@ -303,7 +303,7 @@ __device__ static inline float pmeCorrF(const float z2)
  */
 __device__ static inline float2 fetchCoulombForceR(const float* coulombTable, unsigned int index)
 {
-    return { nbnxmFastLoad(coulombTable, index), nbnxmFastLoad(coulombTable, index + 1) };
+    return { amdNbnxmFastLoad(coulombTable, index), amdNbnxmFastLoad(coulombTable, index + 1) };
 }
 
 /*! \brief Interpolate Ewald coulomb force correction using the F*r table. */
