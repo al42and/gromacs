@@ -55,6 +55,7 @@
  * code that is in double precision.
  */
 
+#include "gromacs/gpu_utils/gpu_kernel_utils.h"
 #include "gromacs/gpu_utils/hip_kernel_utils.h"
 #include "gromacs/gpu_utils/typecasts_cuda_hip.h"
 #include "gromacs/gpu_utils/vectype_ops_hip.h"
@@ -65,52 +66,6 @@
 
 namespace gmx
 {
-
-/*!\brief Helper method to generate faster loads.
- *
- * This method helps hipcc (as late as of rocm 6.2.2, hipcc 6.2.41134-65d174c3e and likely later)
- * to generate faster code for loads where 64-bit scalar + 32-bit vector registers are used instead
- * of 64-bit vector versions, saving a few instructions for computing 64-bit vector addresses.
- */
-template<typename T>
-static __forceinline__ __device__ const T& amdNbnxmFastLoad(const T*     buffer,
-                                                            unsigned int idx,
-                                                            unsigned int offset = 0)
-{
-    return *reinterpret_cast<const T*>(reinterpret_cast<const char*>(buffer)
-                                       + idx * static_cast<unsigned int>(sizeof(T))
-                                       + offset * static_cast<unsigned int>(sizeof(T)));
-}
-
-/*!\brief Helper method to generate faster atomic operations.
- *
- * This method helps hipcc (as late as of rocm 6.2.2, hipcc 6.2.41134-65d174c3e and likely later)
- * to generate faster code for atomic operations involving 64bit scaler and 32bit vector registers.
- */
-static __forceinline__ __device__ void
-atomic_add_force(float3* buffer, unsigned int idx, unsigned int component, float value)
-{
-    atomicAdd(reinterpret_cast<float*>(reinterpret_cast<char*>(buffer)
-                                       + (idx * static_cast<unsigned int>(sizeof(float3))
-                                          + component * static_cast<unsigned int>(sizeof(float)))),
-              value);
-}
-
-template<typename ValueType>
-class AmdFastBuffer
-{
-private:
-    const ValueType* buffer;
-
-public:
-    __forceinline__ __device__ AmdFastBuffer(const ValueType* buffer) : buffer(buffer) {}
-    template<typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
-    __forceinline__ __device__ const ValueType& operator[](IndexType idx) const
-    {
-        return amdNbnxmFastLoad(buffer, idx);
-    }
-};
-
 
 template<PairlistType pairlistType>
 __device__ constexpr int c_subWarp = sc_gpuParallelExecutionWidth(pairlistType);

@@ -467,7 +467,7 @@ __device__ static inline void reduceForceI(AmdPackedFloat3*   input,
             for (int i = 0; i < c_clusterPerSuperCluster; i++)
             {
                 const int ai = (sci * c_clusterPerSuperCluster + i) * c_clSize + tidxj;
-                atomic_add_force(result, ai, tidxi, fci[i]);
+                amdFastAtomicAddForce(result, ai, tidxi, fci[i]);
             }
         }
 
@@ -475,7 +475,7 @@ __device__ static inline void reduceForceI(AmdPackedFloat3*   input,
         {
             if (tidxi < 3)
             {
-                atomic_add_force(fShift, shiftBase, tidxi, shiftForceBuffer);
+                amdFastAtomicAddForce(fShift, shiftBase, tidxi, shiftForceBuffer);
             }
         }
     }
@@ -1038,7 +1038,7 @@ __launch_bounds__(c_clSizeSq<pairlistType>* nthreadZ, minBlocksPerMp) __global__
                 const float reducedForceJ = reduceForceJWarpShuffle<pairlistType>(fCjBuf, tidxi);
                 if (tidxi < 3)
                 {
-                    atomic_add_force(gm_f, aj, tidxi, reducedForceJ);
+                    amdFastAtomicAddForce(gm_f, aj, tidxi, reducedForceJ);
                 }
             } // for (int jm = 0; jm < c_gpuJGroupSize; jm++)
             if constexpr (doPruneNBL)
