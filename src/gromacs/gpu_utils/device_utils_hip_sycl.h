@@ -249,15 +249,20 @@ GMX_FUNC_ATTRIBUTE static AmdPackedFloat3 operator*(const float& s, const AmdPac
     return { v.xy() * s, v.z() * s };
 }
 
+// The atomicAdd method requires that it is only called from methods marked with the
+// __device__ attribute. As some SYCL compilers complain about this attribute, we only compile
+// the code when using hipcc as the compiler and always mark the method with the attribute.
+
+#    if defined(__HIPCC__)
 template<typename ValueType>
-static inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE unsigned int calculateIndex(unsigned int index)
+static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE unsigned int calculateIndex(unsigned int index)
 {
     return index * static_cast<unsigned int>(sizeof(ValueType));
 }
 
 
 template<typename ValueType>
-static inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE unsigned int calculateOffset(unsigned int offset = 0)
+static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE unsigned int calculateOffset(unsigned int offset = 0)
 {
     return offset * static_cast<unsigned int>(sizeof(ValueType));
 }
@@ -269,19 +274,13 @@ static inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE unsigned int calc
  * of 64-bit vector versions, saving a few instructions for computing 64-bit vector addresses.
  */
 template<typename T>
-static inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE const T&
-amdNbnxmFastLoad(const T* buffer, unsigned int idx, unsigned int offset = 0)
+static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE const T& amdNbnxmFastLoad(const T*     buffer,
+                                                                               unsigned int idx,
+                                                                               unsigned int offset = 0)
 {
     return *reinterpret_cast<const T*>(reinterpret_cast<const char*>(buffer)
                                        + calculateIndex<T>(idx) + calculateOffset<T>(offset));
 }
-
-
-// The atomicAdd method requires that it is only called from methods marked with the
-// __device__ attribute. As some SYCL compilers complain about this attribute, we only compile
-// the code when using hipcc as the compiler and always mark the method with the attribute.
-
-#    if defined(__HIPCC__)
 
 /*!\brief Helper method to generate faster atomic operations.
  *
@@ -297,8 +296,6 @@ amdFastAtomicAddForce(ValueType* buffer, unsigned int idx, unsigned int componen
               value);
 }
 
-#    endif
-
 /*! \brief AMD specific helper class to improve data access. */
 template<typename ValueType>
 class AmdFastBuffer
@@ -307,13 +304,15 @@ private:
     const ValueType* buffer;
 
 public:
-    GMX_DEVICE_ATTRIBUTE AmdFastBuffer(const ValueType* buffer) : buffer(buffer) {}
+    __device__ AmdFastBuffer(const ValueType* buffer) : buffer(buffer) {}
     template<typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
-    inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType& operator[](IndexType idx) const
+    inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType& operator[](IndexType idx) const
     {
         return amdNbnxmFastLoad(buffer, idx);
     }
 };
+
+#    endif
 
 #    undef GMX_HOST_ATTRIBUTE
 #    undef GMX_DEVICE_ATTRIBUTE
