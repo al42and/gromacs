@@ -55,7 +55,6 @@
  * code that is in double precision.
  */
 
-#include "gromacs/gpu_utils/gpu_kernel_utils.h"
 #include "gromacs/gpu_utils/hip_kernel_utils.h"
 #include "gromacs/gpu_utils/typecasts_cuda_hip.h"
 #include "gromacs/gpu_utils/vectype_ops_hip.h"
