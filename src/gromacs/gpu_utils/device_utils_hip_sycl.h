@@ -277,19 +277,27 @@ amdNbnxmFastLoad(const T* buffer, unsigned int idx, unsigned int offset = 0)
 }
 
 
+// The atomicAdd method requires that it is only called from methods marked with the
+// __device__ attribute. As some SYCL compilers complain about this attribute, we only compile
+// the code when using hipcc as the compiler and always mark the method with the attribute.
+
+#    if defined(__HIPCC__)
+
 /*!\brief Helper method to generate faster atomic operations.
  *
  * This method helps hipcc (as late as of rocm 6.2.2, hipcc 6.2.41134-65d174c3e and likely later)
  * to generate faster code for atomic operations involving 64bit scaler and 32bit vector registers.
  */
 template<typename ValueType>
-static inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE void
+static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE void
 amdFastAtomicAddForce(ValueType* buffer, unsigned int idx, unsigned int component, float value)
 {
     atomicAdd(reinterpret_cast<float*>(reinterpret_cast<char*>(buffer) + calculateIndex<ValueType>(idx)
                                        + calculateOffset<float>(component)),
               value);
 }
+
+#    endif
 
 /*! \brief AMD specific helper class to improve data access. */
 template<typename ValueType>
