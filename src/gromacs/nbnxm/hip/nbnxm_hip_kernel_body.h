@@ -117,7 +117,7 @@ static const std::string getKernelName()
 }
 
 
-__device__ static inline float2 fetchNbfpC6C12(const float2* nbfpComb, unsigned int type)
+__device__ static inline float2 fetchNbfpC6C12(const float2* nbfpComb, int type)
 {
     return amdNbnxmFastLoad(nbfpComb, type);
 }
@@ -301,7 +301,7 @@ __device__ static inline float pmeCorrF(const float z2)
  *  Depending on what is supported, it fetches parameters either
  *  using direct load, texture objects, or texrefs.
  */
-__device__ static inline float2 fetchCoulombForceR(const float* coulombTable, unsigned int index)
+__device__ static inline float2 fetchCoulombForceR(const float* coulombTable, int index)
 {
     return { amdNbnxmFastLoad(coulombTable, index), amdNbnxmFastLoad(coulombTable, index + 1) };
 }
@@ -311,8 +311,8 @@ __device__ static inline float interpolateCoulombForceR(const float* coulombTabl
                                                         const float  coulombTabScale,
                                                         const float  r)
 {
-    const float        normalized = coulombTabScale * r;
-    const unsigned int index      = static_cast<unsigned int>(normalized);
+    const float normalized = coulombTabScale * r;
+    const int   index      = static_cast<int>(normalized);
     // TODO: current ROCm (latest 6.0.2) compiler does not do this transformation. Remove when this is no longer the case.
     const float fraction = __builtin_amdgcn_fractf(normalized);
 
@@ -330,7 +330,7 @@ __device__ static inline float interpolateCoulombForceR(const float* coulombTabl
  * We don't disable it only for the tabulated kernel as the analytical is the default anyway.
  */
 template<PairlistType pairlistType>
-__device__ static inline float reduceForceJWarpShuffle(AmdPackedFloat3 f, const unsigned int tidxi)
+__device__ static inline float reduceForceJWarpShuffle(AmdPackedFloat3 f, const int tidxi)
 {
     static_assert(isPowerOfTwo(sc_gpuClusterPerSuperCluster(pairlistType)));
     static_assert(sc_gpuClusterSize(pairlistType) == 8);
@@ -361,9 +361,7 @@ __device__ static inline float reduceForceJWarpShuffle(AmdPackedFloat3 f, const 
  * Uses AMD DPP instructions to avoid use of atomic operations.
  */
 template<PairlistType pairlistType>
-__device__ static inline float reduceForceIWarpShuffle(AmdPackedFloat3    f,
-                                                       const unsigned int tidxi,
-                                                       const unsigned int tidxj)
+__device__ static inline float reduceForceIWarpShuffle(AmdPackedFloat3 f, const int tidxi, const int tidxj)
 {
     static_assert(isPowerOfTwo(sc_gpuClusterPerSuperCluster(pairlistType)));
     static_assert(sc_gpuClusterSize(pairlistType) == 8);
@@ -402,7 +400,8 @@ __device__ static inline float reduceForceIWarpShuffle(AmdPackedFloat3    f,
  * Uses atomic operations instead of shuffles.
  */
 template<PairlistType pairlistType, bool calculateShift>
-__device__ static inline float3 reduceForceIAtomics(AmdPackedFloat3 input, float3* result, int tidxj, int aidx)
+__device__ static inline float3
+reduceForceIAtomics(AmdPackedFloat3 input, float3* result, const int tidxj, const int aidx)
 {
 
     static_assert(isPowerOfTwo(sc_gpuClusterPerSuperCluster(pairlistType)));
@@ -441,14 +440,14 @@ __device__ static inline float3 reduceForceIAtomics(AmdPackedFloat3 input, float
  * shift forces are using DPP shuffles for non CDNA architectures.
  */
 template<bool calculateShift, PairlistType pairlistType>
-__device__ static inline void reduceForceI(AmdPackedFloat3*   input,
-                                           float3*            result,
-                                           const unsigned int tidxi,
-                                           const unsigned int tidxj,
-                                           const unsigned int tidx,
-                                           const unsigned int sci,
-                                           float3*            fShift,
-                                           unsigned int       shiftBase)
+__device__ static inline void reduceForceI(AmdPackedFloat3* input,
+                                           float3*          result,
+                                           const int        tidxi,
+                                           const int        tidxj,
+                                           const int        tidx,
+                                           const int        sci,
+                                           float3*          fShift,
+                                           const int        shiftBase)
 {
     constexpr int c_clusterPerSuperCluster = sc_gpuClusterPerSuperCluster(pairlistType);
     constexpr int c_clSize                 = sc_gpuClusterSize(pairlistType);
@@ -573,15 +572,15 @@ __launch_bounds__(c_clSizeSq<pairlistType>* nthreadZ, minBlocksPerMp) __global__
         constexpr int c_parallelExecutionWidth = sc_gpuParallelExecutionWidth(pairlistType);
 
         /* thread/block/warp id-s */
-        const unsigned int tidxi      = threadIdx.x;
-        const unsigned int tidxj      = threadIdx.y;
-        const unsigned int tidx       = tidxj * c_clSize + tidxi;
-        const unsigned int tidxz      = nthreadZ == 1 ? 0 : threadIdx.z;
-        const unsigned int widx       = (c_clSizeSq<pairlistType> == c_parallelExecutionWidth)
-                                                ? 0
-                                                : tidx / c_subWarp<pairlistType>;
-        const unsigned int bidx       = blockIdx.x;
-        const unsigned int tidxInWarp = tidx & (c_parallelExecutionWidth - 1);
+        const int tidxi      = threadIdx.x;
+        const int tidxj      = threadIdx.y;
+        const int tidx       = tidxj * c_clSize + tidxi;
+        const int tidxz      = nthreadZ == 1 ? 0 : threadIdx.z;
+        const int widx       = (c_clSizeSq<pairlistType> == c_parallelExecutionWidth)
+                                       ? 0
+                                       : tidx / c_subWarp<pairlistType>;
+        const int bidx       = blockIdx.x;
+        const int tidxInWarp = tidx & (c_parallelExecutionWidth - 1);
 
         using NbnxmExcl     = nbnxn_excl_t;
         using NbnxmCjPacked = nbnxn_cj_packed_t;
@@ -675,7 +674,7 @@ __launch_bounds__(c_clSizeSq<pairlistType>* nthreadZ, minBlocksPerMp) __global__
         const int         cijPackedEnd   = nbSci.cjPackedEnd;
 
         /*! i-cluster interaction mask for a super-cluster with all c_clusterPerSuperCluster bits set */
-        constexpr unsigned superClInteractionMask = ((1U << c_clusterPerSuperCluster) - 1U);
+        constexpr int superClInteractionMask = ((1U << c_clusterPerSuperCluster) - 1U);
 
         // Only needed if props.elecEwaldAna
         const float beta2 = ewaldBeta * ewaldBeta;
@@ -784,17 +783,17 @@ __launch_bounds__(c_clSizeSq<pairlistType>* nthreadZ, minBlocksPerMp) __global__
         // loop over the j clusters = seen by any of the atoms in the current super-cluster
         for (int jPacked = cijPackedBegin; jPacked < cijPackedEnd; ++jPacked)
         {
-            unsigned int imask = gm_plistCJPacked[jPacked].imei[widx].imask;
-            imask              = (c_clSizeSq<pairlistType> == c_parallelExecutionWidth)
-                                         ? __builtin_amdgcn_readfirstlane(imask)
-                                         : imask;
+            int imask = gm_plistCJPacked[jPacked].imei[widx].imask;
+            imask     = (c_clSizeSq<pairlistType> == c_parallelExecutionWidth)
+                                ? __builtin_amdgcn_readfirstlane(imask)
+                                : imask;
             if (!doPruneNBL && !imask)
             {
                 continue;
             }
             const int wexclIdx = gm_plistCJPacked[jPacked].imei[widx].excl_ind;
 
-            const unsigned int wexcl = gm_plistExcl[wexclIdx].pair[tidx & (c_subWarp<pairlistType> - 1)];
+            const int wexcl = gm_plistExcl[wexclIdx].pair[tidx & (c_subWarp<pairlistType> - 1)];
 #pragma unroll c_gpuJGroupSize
             for (int jm = 0; jm < c_gpuJGroupSize; jm++)
             {
@@ -803,7 +802,7 @@ __launch_bounds__(c_clSizeSq<pairlistType>* nthreadZ, minBlocksPerMp) __global__
                 {
                     continue;
                 }
-                unsigned  maskJI = (1U << (jm * c_clusterPerSuperCluster));
+                int       maskJI = (1U << (jm * c_clusterPerSuperCluster));
                 const int cj     = gm_plistCJPacked[jPacked].cj[jm];
                 const int aj     = cj * c_clSize + tidxj;
 

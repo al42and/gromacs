@@ -254,18 +254,13 @@ GMX_FUNC_ATTRIBUTE static AmdPackedFloat3 operator*(const float& s, const AmdPac
 // the code when using hipcc as the compiler and always mark the method with the attribute.
 
 #    if defined(__HIPCC__)
-template<typename ValueType>
-static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE unsigned int calculateIndex(unsigned int index)
+template<typename ValueType, typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
+static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE IndexType calculateOffset(IndexType index)
 {
-    return index * static_cast<unsigned int>(sizeof(ValueType));
+    __builtin_assume(index >= 0);
+    return index * static_cast<IndexType>(sizeof(ValueType));
 }
 
-
-template<typename ValueType>
-static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE unsigned int calculateOffset(unsigned int offset = 0)
-{
-    return offset * static_cast<unsigned int>(sizeof(ValueType));
-}
 
 /*!\brief Helper method to generate faster loads.
  *
@@ -273,13 +268,13 @@ static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE unsigned int calculateOffse
  * to generate faster code for loads where 64-bit scalar + 32-bit vector registers are used instead
  * of 64-bit vector versions, saving a few instructions for computing 64-bit vector addresses.
  */
-template<typename T>
-static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE const T& amdNbnxmFastLoad(const T*     buffer,
-                                                                               unsigned int idx,
-                                                                               unsigned int offset = 0)
+template<typename ValueType, typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
+static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType&
+amdNbnxmFastLoad(const ValueType* buffer, IndexType idx, IndexType offset = 0)
 {
-    return *reinterpret_cast<const T*>(reinterpret_cast<const char*>(buffer)
-                                       + calculateIndex<T>(idx) + calculateOffset<T>(offset));
+    return *reinterpret_cast<const ValueType*>(reinterpret_cast<const char*>(buffer)
+                                               + calculateOffset<ValueType>(idx)
+                                               + calculateOffset<ValueType>(offset));
 }
 
 /*!\brief Helper method to generate faster atomic operations.
@@ -287,11 +282,11 @@ static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE const T& amdNbnxmFastLoad(c
  * This method helps hipcc (as late as of rocm 6.2.2, hipcc 6.2.41134-65d174c3e and likely later)
  * to generate faster code for atomic operations involving 64bit scaler and 32bit vector registers.
  */
-template<typename ValueType>
+template<typename ValueType, typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
 static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE void
-amdFastAtomicAddForce(ValueType* buffer, unsigned int idx, unsigned int component, float value)
+amdFastAtomicAddForce(ValueType* buffer, IndexType idx, IndexType component, float value)
 {
-    atomicAdd(reinterpret_cast<float*>(reinterpret_cast<char*>(buffer) + calculateIndex<ValueType>(idx)
+    atomicAdd(reinterpret_cast<float*>(reinterpret_cast<char*>(buffer) + calculateOffset<ValueType>(idx)
                                        + calculateOffset<float>(component)),
               value);
 }
