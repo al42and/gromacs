@@ -249,13 +249,8 @@ GMX_FUNC_ATTRIBUTE static AmdPackedFloat3 operator*(const float& s, const AmdPac
     return { v.xy() * s, v.z() * s };
 }
 
-// The atomicAdd method requires that it is only called from methods marked with the
-// __device__ attribute. As some SYCL compilers complain about this attribute, we only compile
-// the code when using hipcc as the compiler and always mark the method with the attribute.
-
-#    if defined(__HIPCC__)
 template<typename ValueType, typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
-static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE IndexType calculateOffset(IndexType index)
+static inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE IndexType calculateOffset(IndexType index)
 {
     __builtin_assume(index >= 0);
     return index * static_cast<IndexType>(sizeof(ValueType));
@@ -269,7 +264,7 @@ static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE IndexType calculateOffset(I
  * of 64-bit vector versions, saving a few instructions for computing 64-bit vector addresses.
  */
 template<typename ValueType, typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
-static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType&
+static inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType&
 amdNbnxmFastLoad(const ValueType* buffer, IndexType idx, IndexType offset = 0)
 {
     return *reinterpret_cast<const ValueType*>(reinterpret_cast<const char*>(buffer)
@@ -281,14 +276,31 @@ amdNbnxmFastLoad(const ValueType* buffer, IndexType idx, IndexType offset = 0)
  *
  * This method helps hipcc (as late as of rocm 6.2.2, hipcc 6.2.41134-65d174c3e and likely later)
  * to generate faster code for atomic operations involving 64bit scalar and 32bit vector registers.
+ *
+ * Normally, SYCL functions don't need any attributes, but they treat calling native device-only
+ * functions (specifically, atomicAdd) slightly differently, which is why we have to add __device__
+ * attribute when building with ACpp (to prevent it from adding `__host__`. Furthermore, in DPC++,
+ * we don't have the necessary headers included, so we cannot easily call atomicAdd directly, which
+ * is why we fall back to using sycl::atomic_ref.
  */
 template<typename ValueType, typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
-static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE void
-amdFastAtomicAddForce(ValueType* buffer, IndexType idx, IndexType component, float value)
+static inline
+#    if GMX_GPU_HIP || GMX_SYCL_ACPP
+        __device__
+#    endif
+                GMX_ALWAYS_INLINE_ATTRIBUTE void
+                amdFastAtomicAddForce(ValueType* buffer, IndexType idx, IndexType component, float value)
 {
-    atomicAdd(reinterpret_cast<float*>(reinterpret_cast<char*>(buffer) + calculateOffset<ValueType>(idx)
-                                       + calculateOffset<float>(component)),
-              value);
+    char* ptr = reinterpret_cast<char*>(buffer) + calculateOffset<ValueType>(idx)
+                + calculateOffset<float>(component);
+#    if GMX_GPU_HIP || GMX_SYCL_ACPP
+    atomicAdd(reinterpret_cast<float*>(ptr), value);
+#    else
+    using sycl::memory_order, sycl::memory_scope, sycl::access::address_space;
+    sycl::atomic_ref<float, memory_order::relaxed, memory_scope::device, address_space::global_space> ref(
+            *reinterpret_cast<float*>(ptr));
+    ref.fetch_add(value);
+#    endif
 }
 
 /*! \brief AMD specific helper class to improve data access. */
@@ -299,15 +311,14 @@ private:
     const ValueType* buffer;
 
 public:
-    __device__ AmdFastBuffer(const ValueType* buffer) : buffer(buffer) {}
+    GMX_DEVICE_ATTRIBUTE AmdFastBuffer(const ValueType* buffer) : buffer(buffer) {}
     template<typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
-    inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType& operator[](IndexType idx) const
+    inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType& operator[](IndexType idx) const
     {
         return amdNbnxmFastLoad(buffer, idx);
     }
 };
 
-#    endif
 
 #    undef GMX_HOST_ATTRIBUTE
 #    undef GMX_DEVICE_ATTRIBUTE
