@@ -280,7 +280,7 @@ amdNbnxmFastLoad(const ValueType* buffer, IndexType idx, IndexType offset = 0)
 /*!\brief Helper method to generate faster atomic operations.
  *
  * This method helps hipcc (as late as of rocm 6.2.2, hipcc 6.2.41134-65d174c3e and likely later)
- * to generate faster code for atomic operations involving 64bit scaler and 32bit vector registers.
+ * to generate faster code for atomic operations involving 64bit scalar and 32bit vector registers.
  */
 template<typename ValueType, typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
 static inline __device__ GMX_ALWAYS_INLINE_ATTRIBUTE void
