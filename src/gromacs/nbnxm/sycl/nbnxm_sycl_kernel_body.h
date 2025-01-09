@@ -1040,7 +1040,7 @@ static auto nbnxmKernel(sycl::handler& cgh,
                             {
                                 /* LJ 6*C6 and 12*C12 */
                                 atomTypeI = sm_atomTypeI[i * c_clSize + tidxi];
-                                c6c12     = optimizedLoad(gm_nbfp, numTypes * atomTypeI + atomTypeJ);
+                                c6c12 = optimizedLoad(gm_nbfp, numTypes * atomTypeI + atomTypeJ);
                             }
                             else
                             {

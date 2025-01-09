@@ -243,12 +243,12 @@ static inline GMX_ALWAYS_INLINE float interpolateCoulombForceR(const float* a_co
     // not always recognize with two consecutive loads. Verified that this is safe
     // (no alignment requirement) and supported on relevamt target AMD uarch.
     const float2 leftAndRight = optimizedLoad(reinterpret_cast<const float2*>(a_coulombTab), index);
-    const float left = leftAndRight.x;
-    const float right = leftAndRight.y;
+    const float  left         = leftAndRight.x;
+    const float  right        = leftAndRight.y;
 #else
     const float fraction = normalized - index;
-    const float left  = a_coulombTab[index];
-    const float right = a_coulombTab[index + 1];
+    const float left     = a_coulombTab[index];
+    const float right    = a_coulombTab[index + 1];
 #endif
 
     return lerp(left, right, fraction); // TODO: sycl::mix
