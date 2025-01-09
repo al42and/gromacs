@@ -242,7 +242,7 @@ static inline GMX_ALWAYS_INLINE float interpolateCoulombForceR(const float* a_co
     // Make sure that we issue a single GLOBAL_LOAD_DWORDX2 which the optimizer does
     // not always recognize with two consecutive loads. Verified that this is safe
     // (no alignment requirement) and supported on relevamt target AMD uarch.
-    const float2 leftAndRight = amdNbnxmFastLoad(reinterpret_cast<const float2*>(a_coulombTab), index);
+    const float2 leftAndRight = optimizedLoad(reinterpret_cast<const float2*>(a_coulombTab), index);
     const float left = leftAndRight.x;
     const float right = leftAndRight.y;
 #else

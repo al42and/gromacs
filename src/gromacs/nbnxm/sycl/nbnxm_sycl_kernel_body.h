@@ -969,11 +969,11 @@ static auto nbnxmKernel(sycl::handler& cgh,
                     continue;
                 }
                 unsigned  maskJI = (1U << (jm * c_superClusterSize));
-                const int cj     = gm_plistCJPacked[jPacked].cj[jm];
+                const int cj     = optimizedLoad(gm_plistCJPacked[jPacked].cj, jm);
                 const int aj     = cj * c_clSize + tidxj;
 
                 // load j atom data
-                const Float4 xqj = gm_xq[aj];
+                const Float4 xqj = optimizedLoad(gm_xq, aj);
 
                 const Float3 xj(xqj[0], xqj[1], xqj[2]);
                 const float  qj = xqj[3];
@@ -981,11 +981,11 @@ static auto nbnxmKernel(sycl::handler& cgh,
                 Float2       ljCombJ;   // Only needed if (props.vdwComb)
                 if constexpr (props.vdwComb)
                 {
-                    ljCombJ = gm_ljComb[aj];
+                    ljCombJ = optimizedLoad(gm_ljComb, aj);
                 }
                 else
                 {
-                    atomTypeJ = gm_atomTypes[aj];
+                    atomTypeJ = optimizedLoad(gm_atomTypes, aj);
                 }
 
                 Float3 fCjBuf(0.0F, 0.0F, 0.0F);
@@ -1040,7 +1040,7 @@ static auto nbnxmKernel(sycl::handler& cgh,
                             {
                                 /* LJ 6*C6 and 12*C12 */
                                 atomTypeI = sm_atomTypeI[i * c_clSize + tidxi];
-                                c6c12     = gm_nbfp[numTypes * atomTypeI + atomTypeJ];
+                                c6c12     = optimizedLoad(gm_nbfp, numTypes * atomTypeI + atomTypeJ);
                             }
                             else
                             {
