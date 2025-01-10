@@ -42,6 +42,7 @@
 
 #include "nbnxm_sycl_kernel_pruneonly.h"
 
+#include "gromacs/gpu_utils/device_utils_hip_sycl.h"
 #include "gromacs/gpu_utils/devicebuffer.h"
 #include "gromacs/gpu_utils/gmxsycl.h"
 #include "gromacs/math/functions.h"
@@ -210,11 +211,11 @@ auto nbnxmKernelPruneOnly(sycl::handler& cgh,
                     {
                         unsigned mask_ji = (1U << (jm * c_superClusterSize));
                         // SYCL-TODO: Reevaluate prefetching methods
-                        const int cj = gm_plistCJPacked[jPacked].cj[jm];
+                        const int cj = optimizedLoad(gm_plistCJPacked[jPacked].cj, jm);
                         const int aj = cj * c_clSize + tidxj;
 
                         /* load j atom data */
-                        const Float4 tmp = gm_xq[aj];
+                        const Float4 tmp = optimizedLoad(gm_xq, aj);
                         const Float3 xj(tmp[0], tmp[1], tmp[2]);
 
                         for (int i = 0; i < c_superClusterSize; i++)
