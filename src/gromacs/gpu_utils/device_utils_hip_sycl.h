@@ -272,21 +272,6 @@ amdNbnxmFastLoad(const ValueType* buffer, IndexType idx, IndexType offset = 0)
                                                + calculateOffset<ValueType>(offset));
 }
 
-/*!\brief Helper method to hide the conditional call to AMD GPU targeting amdNbnxmFastLoad.
- */
-template<typename ValueType, typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
-static inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType&
-optimizedLoad(const ValueType* buffer, IndexType idx, IndexType offset = 0)
-{
-
-#    if (defined(__SYCL_DEVICE_ONLY__) && defined(__AMDGCN__)) || GMX_GPU_HIP
-    return *reinterpret_cast<const ValueType*>(reinterpret_cast<const char*>(buffer)
-                                               + calculateOffset<ValueType>(idx)
-                                               + calculateOffset<ValueType>(offset));
-#    else
-    return buffer[idx + offset];
-#    endif
-}
 /*!\brief Helper method to generate faster atomic operations.
  *
  * This method helps hipcc (as late as of rocm 6.2.2, hipcc 6.2.41134-65d174c3e and likely later)
@@ -334,13 +319,28 @@ public:
     }
 };
 
+#endif /* Device code only */
+
+/*!\brief Helper method to hide the conditional call to AMD GPU targeting amdNbnxmFastLoad.
+ */
+template<typename ValueType, typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
+static inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType&
+optimizedLoad(const ValueType* buffer, IndexType idx, IndexType offset = 0)
+{
+
+#    if (defined(__SYCL_DEVICE_ONLY__) && defined(__AMDGCN__)) || GMX_GPU_HIP
+    return *reinterpret_cast<const ValueType*>(reinterpret_cast<const char*>(buffer)
+                                               + calculateOffset<ValueType>(idx)
+                                               + calculateOffset<ValueType>(offset));
+#    else
+    return buffer[idx + offset];
+#    endif
+}
 
 #    undef GMX_HOST_ATTRIBUTE
 #    undef GMX_DEVICE_ATTRIBUTE
 #    undef GMX_HOSTDEVICE_ATTRIBUTE
 #    undef GMX_ALWAYS_INLINE_ATTRIBUTE
 #    undef GMX_FUNC_ATTRIBUTE
-
-#endif /* Device code only */
 
 #endif /* GMX_GPU_UTILS_WAVE_MOVE_DPP_H */
