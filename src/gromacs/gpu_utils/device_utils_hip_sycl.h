@@ -52,36 +52,37 @@
 
 #include <type_traits>
 
+// As this header is used both in SYCL and HIP builds, we define the __host__ __device__ attributes
+// based on the build type. We also can only use assertions here if they are actually usable
+#if GMX_GPU_SYCL
+#    define GMX_HOST_ATTRIBUTE
+#    define GMX_DEVICE_ATTRIBUTE
+#    define GMX_HOSTDEVICE_ATTRIBUTE GMX_HOST_ATTRIBUTE GMX_DEVICE_ATTRIBUTE
+#    if defined(SYCL_EXT_ONEAPI_ASSERT) && SYCL_EXT_ONEAPI_ASSERT
+#        define PACKED_FLOAT_ASSERT(condition) assert(condition)
+#    else
+#        define PACKED_FLOAT_ASSERT(condition)
+#    endif
+#    include "gputraits_sycl.h"
+#elif GMX_GPU_HIP
+#    define GMX_HOST_ATTRIBUTE __host__
+#    define GMX_DEVICE_ATTRIBUTE __device__
+#    define GMX_HOSTDEVICE_ATTRIBUTE GMX_HOST_ATTRIBUTE GMX_DEVICE_ATTRIBUTE
+#    define PACKED_FLOAT_ASSERT(condition) assert(condition)
+#    include "gputraits_hip.h"
+#else
+#    error Including device_utils_hip_sycl.h header in unsupported build config
+#endif
+
+#define GMX_ALWAYS_INLINE_ATTRIBUTE __attribute__((always_inline))
+#define GMX_FUNC_ATTRIBUTE GMX_HOSTDEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE
+
+
 // We only want to use the methods in this header when we are actually compiling device code
 #if (defined(__SYCL_DEVICE_ONLY__) && defined(__AMDGCN__)) || defined(__HIPCC__)
 
 #    include "gromacs/math/functions.h"
 
-// As this header is used both in SYCL and HIP builds, we define the __host__ __device__ attributes
-// based on the build type. We also can only use assertions here if they are actually usable
-#    define GMX_ALWAYS_INLINE_ATTRIBUTE __attribute__((always_inline))
-
-#    if GMX_GPU_SYCL
-#        define GMX_HOST_ATTRIBUTE
-#        define GMX_DEVICE_ATTRIBUTE
-#        define GMX_HOSTDEVICE_ATTRIBUTE GMX_HOST_ATTRIBUTE GMX_DEVICE_ATTRIBUTE
-#        if defined(SYCL_EXT_ONEAPI_ASSERT) && SYCL_EXT_ONEAPI_ASSERT
-#            define PACKED_FLOAT_ASSERT(condition) assert(condition)
-#        else
-#            define PACKED_FLOAT_ASSERT(condition)
-#        endif
-#        include "gputraits_sycl.h"
-#    elif GMX_GPU_HIP
-#        define GMX_HOST_ATTRIBUTE __host__
-#        define GMX_DEVICE_ATTRIBUTE __device__
-#        define GMX_HOSTDEVICE_ATTRIBUTE GMX_HOST_ATTRIBUTE GMX_DEVICE_ATTRIBUTE
-#        define PACKED_FLOAT_ASSERT(condition) assert(condition)
-#        include "gputraits_hip.h"
-#    else
-#        error Including packed_float implementation header in unsupported build config
-#    endif
-
-#    define GMX_FUNC_ATTRIBUTE GMX_HOSTDEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE
 
 /* !\brief Cross-lane move operation using AMD DPP (Data-Parallel Primitives).
  *
@@ -326,8 +327,9 @@ public:
 /*!\brief Helper method to hide the conditional call to AMD GPU targeting amdNbnxmFastLoad.
  */
 template<typename ValueType, typename IndexType, std::enable_if_t<std::is_integral<IndexType>::value, bool> = true>
-static inline GMX_DEVICE_ATTRIBUTE GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType&
-optimizedLoad(const ValueType* buffer, IndexType idx, IndexType offset = 0)
+static inline GMX_ALWAYS_INLINE_ATTRIBUTE const ValueType& optimizedLoad(const ValueType* buffer,
+                                                                         IndexType        idx,
+                                                                         IndexType offset = 0)
 {
 
 #if (defined(__SYCL_DEVICE_ONLY__) && defined(__AMDGCN__)) || GMX_GPU_HIP
