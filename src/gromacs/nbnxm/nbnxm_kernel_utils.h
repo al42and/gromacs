@@ -239,17 +239,14 @@ static inline GMX_ALWAYS_INLINE float interpolateCoulombForceR(const float* a_co
 #if (defined(__SYCL_DEVICE_ONLY__) && defined(__AMDGCN__)) || GMX_GPU_HIP
     // TODO: ROCm compiler at least up to 6.0 does not do this transformation. Remove when this is no longer the case.
     const float fraction = __builtin_amdgcn_fractf(normalized);
-    // Make sure that we issue a single GLOBAL_LOAD_DWORDX2 which the optimizer does
-    // not always recognize with two consecutive loads. Verified that this is safe
-    // (no alignment requirement) and supported on relevamt target AMD uarch.
-    const float2 leftAndRight = optimizedLoad(reinterpret_cast<const float2*>(a_coulombTab), index);
-    const float  left         = leftAndRight.x;
-    const float  right        = leftAndRight.y;
 #else
     const float fraction = normalized - index;
-    const float left     = a_coulombTab[index];
-    const float right    = a_coulombTab[index + 1];
 #endif
+    // TODO: On AMD, we want to issue a single GLOBAL_LOAD_DWORDX2 which the optimizer
+    // does not always recognize with two consecutive loads (despite the lack of alignment
+    // requirement on GCN/CDNA/RDNA).
+    const float left  = optimizedLoad(a_coulombTab, index);
+    const float right = optimizedLoad(a_coulombTab, index + 1);
 
     return lerp(left, right, fraction);
 }
