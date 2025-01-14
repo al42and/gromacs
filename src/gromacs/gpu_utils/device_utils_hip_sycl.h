@@ -48,10 +48,12 @@
  *  \author Paul Bauer <paul.bauer.q@gmail.com>
  */
 
+#include "config.h"
+
+#include <type_traits>
+
 // We only want to use the methods in this header when we are actually compiling device code
 #if (defined(__SYCL_DEVICE_ONLY__) && defined(__AMDGCN__)) || defined(__HIPCC__)
-
-#    include "config.h"
 
 #    include "gromacs/math/functions.h"
 
