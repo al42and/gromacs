@@ -32,7 +32,8 @@ jobs:
             os: macos-latest,
             cc: "clang", cxx: "clang++",
             gpu_var: "Off",
-            openmp_var: "Off"
+            openmp_var: "Off",
+            simd_var: "Auto"
           }
         - {
             name: "macOS Latest GCC 14 with OpenCL", artifact: "macOS-gcc-OpenCL.7z",
@@ -41,7 +42,16 @@ jobs:
             os: macos-latest,
             cc: "gcc-14", cxx: "g++-14",
             gpu_var: "OpenCL",
-            openmp_var: "On"
+            openmp_var: "On",
+            simd_var: "Auto"
+          }
+        - {
+            name: "Ubuntu 24.04 on ARM with SVE", artifact: "Ubuntu-arm.7z",
+            os: ubuntu-24.04-arm,
+            cc: "gcc-14", cxx: "g++-14",
+            gpu_var: "Off",
+            openmp_var: "On",
+            simd_var: "ARM_SVE"
           }
 
     env:
@@ -50,6 +60,7 @@ jobs:
       CI_JOB_ID: ${{ github.sha }} # Tell CMake it's running in CI
       OPENMP_VAR: ${{ matrix.config.openmp_var }}
       GPU_VAR: ${{ matrix.config.gpu_var }}
+      SIMD_VAR: ${{ matrix.config.simd_var }}
       ENVIRONMENT_SCRIPT: ${{ matrix.config.environment_script }}
 
     steps:

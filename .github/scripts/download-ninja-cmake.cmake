@@ -53,33 +53,39 @@ elseif ("$ENV{RUNNER_OS}" STREQUAL "macOS")
     set(ccache_dir "ccache-${ccache_version}-darwin")
 endif()
 
-set(ninja_url "https://github.com/ninja-build/ninja/releases/download/v${ninja_version}/ninja-${ninja_suffix}")
-file(DOWNLOAD "${ninja_url}" ./ninja.zip)
-execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvf ./ninja.zip)
+if (NOT "$ENV{RUNNER_OS}" STREQUAL "Linux")
+    set(ninja_url "https://github.com/ninja-build/ninja/releases/download/v${ninja_version}/ninja-${ninja_suffix}")
+    file(DOWNLOAD "${ninja_url}" ./ninja.zip)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvf ./ninja.zip)
 
-set(cmake_url "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-${cmake_suffix}")
-file(DOWNLOAD "${cmake_url}" ./cmake.zip)
-execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ./cmake.zip)
+    set(cmake_url "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-${cmake_suffix}")
+    file(DOWNLOAD "${cmake_url}" ./cmake.zip)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ./cmake.zip)
 
-set(ccache_url "https://github.com/ccache/ccache/releases/download/v${ccache_version}/ccache-${ccache_version}-${ccache_suffix}")
-file(DOWNLOAD "${ccache_url}" ./ccache.zip)
-execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ./ccache.zip)
+    set(ccache_url "https://github.com/ccache/ccache/releases/download/v${ccache_version}/ccache-${ccache_version}-${ccache_suffix}")
+    file(DOWNLOAD "${ccache_url}" ./ccache.zip)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ./ccache.zip)
 
-# Add to PATH environment variable
-file(TO_CMAKE_PATH "$ENV{GITHUB_WORKSPACE}/${cmake_dir}" cmake_dir)
-set(path_separator ":")
-if ("$ENV{RUNNER_OS}" STREQUAL "Windows")
-    set(path_separator ";")
-endif()
-file(APPEND "$ENV{GITHUB_PATH}" "$ENV{GITHUB_WORKSPACE}${path_separator}${cmake_dir}")
+    # Add to PATH environment variable
+    file(TO_CMAKE_PATH "$ENV{GITHUB_WORKSPACE}/${cmake_dir}" cmake_dir)
+    set(path_separator ":")
+    if ("$ENV{RUNNER_OS}" STREQUAL "Windows")
+        set(path_separator ";")
+    endif()
+    file(APPEND "$ENV{GITHUB_PATH}" "$ENV{GITHUB_WORKSPACE}${path_separator}${cmake_dir}")
 
-if (NOT "$ENV{RUNNER_OS}" STREQUAL "Windows")
-    file(RENAME "${ccache_dir}/ccache" "./ccache")
-    execute_process(
-    COMMAND chmod +x ninja
-    COMMAND chmod +x ${cmake_dir}/cmake
-    COMMAND chmod +x ccache
-    )
+    if (NOT "$ENV{RUNNER_OS}" STREQUAL "Windows")
+        file(RENAME "${ccache_dir}/ccache" "./ccache")
+        execute_process(
+        COMMAND chmod +x ninja
+        COMMAND chmod +x ${cmake_dir}/cmake
+        COMMAND chmod +x ccache
+        )
+    else()
+        file(RENAME "${ccache_dir}/ccache.exe" "./ccache.exe")
+    endif()
 else()
-    file(RENAME "${ccache_dir}/ccache.exe" "./ccache.exe")
+    execute_process(
+        COMMAND sudo apt install -y ccache
+    )
 endif()
