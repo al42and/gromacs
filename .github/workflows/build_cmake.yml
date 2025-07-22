@@ -18,23 +18,6 @@ jobs:
       matrix:
         config:
         - {
-            name: "Windows MSVC 2022", artifact: "Windows-MSVC-2022.7z",
-            os: windows-2022,
-            cc: "cl", cxx: "cl",
-            environment_script: "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
-            gpu_var: "Off",
-            openmp_var: "On"
-          }
-        - {
-            name: "macOS Latest Clang", artifact: "macOS.7z",
-            # In a release branch, we should fix this for the lifetime
-            # of the branch.
-            os: macos-latest,
-            cc: "clang", cxx: "clang++",
-            gpu_var: "Off",
-            openmp_var: "Off"
-          }
-        - {
             name: "macOS Latest GCC 14 with OpenCL", artifact: "macOS-gcc-OpenCL.7z",
             # In a release branch, we should fix this for the lifetime
             # of the branch.
