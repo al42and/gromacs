@@ -57,6 +57,10 @@ jobs:
       with:
         show-progress: false
 
+    - name: Override CMake version for macOS GCC 14 with OpenCL
+      if: ${{ matrix.config.name == 'macOS Latest GCC 14 with OpenCL' }}
+      run: echo "CMAKE_VERSION=4.1.0" >> $GITHUB_ENV
+
     - name: Download Ninja, CMake, and CCache
       run: cmake -P .github/scripts/download-ninja-cmake.cmake
 
@@ -76,4 +80,3 @@ jobs:
 
     - name: Run tests
       run: cmake -P .github/scripts/test.cmake
-
