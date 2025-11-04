@@ -47,6 +47,7 @@
 #include <cstdint>
 
 #include <array>
+#include <filesystem>
 #include <map>
 #include <string>
 #include <vector>
@@ -336,7 +337,7 @@ public:
      *                              capture these files from a Linux system.
      */
     explicit HardwareTopology(const std::map<int, std::array<int, 3>>& logicalProcessorIdMap,
-                              const std::string&                       filesystemRoot);
+                              const std::filesystem::path&             filesystemRoot);
 
     /*! \brief Creates mock topology by parsing mock Linux sys/fs path
      *
@@ -361,7 +362,8 @@ public:
      *                            that should be retained in the topology, mocking the
      *                            logical processors that are enabled in our cpu mask.
      */
-    explicit HardwareTopology(const std::string& filesystemRoot, const std::vector<int>& allowedProcessors);
+    explicit HardwareTopology(const std::filesystem::path& filesystemRoot,
+                              ArrayRef<const int>          allowedProcessors);
 
     /*! \brief Creates mock topology by parsing mock Linux sys/fs path
      *
@@ -389,9 +391,9 @@ public:
      *                            that should be included in the external affinity mask
      *                            in the created topology.
      */
-    explicit HardwareTopology(const std::string&      filesystemRoot,
-                              const std::vector<int>& allowedProcessors,
-                              const std::vector<int>& externalAffinitySet);
+    explicit HardwareTopology(const std::filesystem::path& filesystemRoot,
+                              ArrayRef<const int>          allowedProcessors,
+                              ArrayRef<const int>          externalAffinitySet);
 
     /*! \brief Check what topology information is available and valid
      *

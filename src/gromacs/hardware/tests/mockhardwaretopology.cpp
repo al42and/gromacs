@@ -285,7 +285,7 @@ TEST_P(MockHardwareTopologyTest, DetectsHardware)
     }
 
     HardwareTopology hwTopFromMap(checkCpus ? allowedProcessorIdMap : logicalProcessorIdMap,
-                                  TestFileManager::getInputFilePath(filePath).string());
+                                  TestFileManager::getInputFilePath(filePath));
     runTest(hwTopFromMap);
 }
 
@@ -351,7 +351,7 @@ TEST_P(MockHardwareTopologySpecialSystemTest, DetectsHardware)
     std::vector<int> allowedCpus(systemSize);
     std::iota(allowedCpus.begin(), allowedCpus.end(), firstAvailableCpu);
 
-    HardwareTopology hwTopFromSysFs(TestFileManager::getInputFilePath(filePath).string(), allowedCpus);
+    HardwareTopology hwTopFromSysFs(TestFileManager::getInputFilePath(filePath), allowedCpus);
     runTest(hwTopFromSysFs);
 };
 

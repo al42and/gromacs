@@ -51,6 +51,7 @@
 
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -64,6 +65,8 @@
 #if GMX_USE_HWLOC
 #    include <hwloc.h>
 #endif
+
+#include <optional>
 
 #include <sys/types.h>
 
@@ -878,17 +881,17 @@ std::vector<int> parseCpuString(const std::string& cpuString)
  *
  *  \return SupportLevel::Basic if topology information was found.
  */
-HardwareTopology::SupportLevel parseSysFsCpuTopology(HardwareTopology::Machine* machine,
-                                                     const std::string&         root        = "",
-                                                     const std::vector<int>&    allowedCpus = {})
+HardwareTopology::SupportLevel parseSysFsCpuTopology(HardwareTopology::Machine*   machine,
+                                                     const std::filesystem::path& root        = "/",
+                                                     ArrayRef<const int>          allowedCpus = {})
 {
     std::string possibleCpuString;
-    std::getline(std::ifstream(root + "/sys/devices/system/cpu/possible"), possibleCpuString);
+    std::getline(std::ifstream(root / "sys/devices/system/cpu/possible"), possibleCpuString);
     std::vector<int> rawCpuList =
             parseCpuString(possibleCpuString); // Vector will be empty if file did not exist
     std::vector<int> okCpuList;
 
-    if (root.empty())
+    if (root == "/")
     {
 #if HAVE_SCHED_AFFINITY
         // Presently, Linux lists all CPUs as possible, rather than the cpu set for the process.
@@ -929,11 +932,11 @@ HardwareTopology::SupportLevel parseSysFsCpuTopology(HardwareTopology::Machine* 
 
     for (int c : okCpuList)
     {
-        const std::string logicalCpuTopologyPath(root + "/sys/devices/system/cpu/cpu"
-                                                 + std::to_string(c) + "/topology/");
-        std::string       packageString, coreString;
-        std::getline(std::ifstream(logicalCpuTopologyPath + "physical_package_id"), packageString);
-        std::getline(std::ifstream(logicalCpuTopologyPath + "core_id"), coreString);
+        const std::filesystem::path logicalCpuTopologyPath(root / "sys/devices/system/cpu/cpu"
+                                                           / std::to_string(c) / "topology");
+        std::string                 packageString, coreString;
+        std::getline(std::ifstream(logicalCpuTopologyPath / "physical_package_id"), packageString);
+        std::getline(std::ifstream(logicalCpuTopologyPath / "core_id"), coreString);
 
         if (packageString.empty() || coreString.empty())
         {
@@ -970,25 +973,24 @@ HardwareTopology::SupportLevel parseSysFsCpuTopology(HardwareTopology::Machine* 
  * active for the present process by searching for our own process id in
  * the cgroups.procs file in each combination of mountPoint and subGroup.
  *
- * \return Path to the active cgroup directory, or empty string if none found.
+ * \return Path to the active cgroup directory, or "/" string if none found.
  */
-std::string findCgroupPath(const std::vector<std::string>& mountPoints,
-                           const std::vector<std::string>& subGroups,
-                           const std::string&              root)
+std::optional<std::filesystem::path> findCgroupPath(gmx::ArrayRef<const std::string> mountPoints,
+                                                    gmx::ArrayRef<const std::string> subGroups,
+                                                    const std::filesystem::path&     root)
 {
     // We read the pid from /proc/self/stat instead of calling getpid(),
     // so we can mock this properly in testing.
-    std::ifstream procSelfStatStream(root + "/proc/self/stat");
+    std::ifstream procSelfStatStream(root / "proc/self/stat");
     std::string   statString;
     std::getline(procSelfStatStream, statString);
     const int myPid = std::atoi(statString.c_str()); // will be 0 if file was not found
-    for (const std::string_view mountPoint : mountPoints)
+    for (const auto& mountPoint : mountPoints)
     {
-        for (const std::string_view subGroup : subGroups)
+        for (const auto& subGroup : subGroups)
         {
-            std::string path = root;
-            path.append(mountPoint).append(subGroup);
-            std::ifstream cgroupProcsStream(path + "/cgroup.procs");
+            std::filesystem::path path = std::filesystem::path(root).concat(mountPoint).concat(subGroup);
+            std::ifstream cgroupProcsStream(path / "cgroup.procs");
             std::string   s;
             while (std::getline(cgroupProcsStream, s))
             {
@@ -1004,7 +1006,7 @@ std::string findCgroupPath(const std::vector<std::string>& mountPoints,
             }
         }
     }
-    return "";
+    return std::nullopt;
 }
 
 /*! \brief Parse cpu limits from cgroup version 1 file system on Linux
@@ -1017,14 +1019,15 @@ std::string findCgroupPath(const std::vector<std::string>& mountPoints,
  * \return Allowed CPU limit. Note that this is often larger than 1,
  *                    meaning the limit is larger than 1 thread.
  */
-float parseCgroup1CpuLimit(const std::vector<std::string>& mountPoints, const std::string& root = "")
+float parseCgroup1CpuLimit(gmx::ArrayRef<const std::string> mountPoints,
+                           const std::filesystem::path&     root = "/")
 {
     std::vector<std::string> subGroups;
 
     std::string line;
     bool        found = false;
 
-    std::ifstream cgroupStream(root + "/proc/self/cgroup");
+    std::ifstream cgroupStream(root / "proc/self/cgroup");
     while (!found && std::getline(cgroupStream, line))
     {
         std::istringstream       lineStream(line);
@@ -1053,13 +1056,13 @@ float parseCgroup1CpuLimit(const std::vector<std::string>& mountPoints, const st
         subGroups.emplace_back("/");
     }
 
-    const std::string cgroupPath = findCgroupPath(mountPoints, subGroups, root);
-    if (!cgroupPath.empty())
+    const std::optional<std::filesystem::path> cgroupPath = findCgroupPath(mountPoints, subGroups, root);
+    if (cgroupPath.has_value())
     {
         // Reach one value from each of two files.
         std::string quotaString, periodString;
-        std::getline(std::ifstream(cgroupPath + "/cpu.cfs_quota_us"), quotaString);
-        std::getline(std::ifstream(cgroupPath + "/cpu.cfs_period_us"), periodString);
+        std::getline(std::ifstream(cgroupPath.value() / "cpu.cfs_quota_us"), quotaString);
+        std::getline(std::ifstream(cgroupPath.value() / "cpu.cfs_period_us"), periodString);
         const int quota  = std::atoi(quotaString.c_str()); // will be 0 if files did not exist
         const int period = std::atoi(periodString.c_str());
         // If conversions could not be done, quota & period will be 0. Quota -1 means no limit.
@@ -1081,14 +1084,15 @@ float parseCgroup1CpuLimit(const std::vector<std::string>& mountPoints, const st
  * \return Allowed CPU limit. Note that this is often larger than 1,
  *                    meaning the limit is larger than 1 thread.
  */
-float parseCgroup2CpuLimit(const std::vector<std::string>& mountPoints, const std::string& root = "")
+float parseCgroup2CpuLimit(gmx::ArrayRef<const std::string> mountPoints,
+                           const std::filesystem::path&     root = "/")
 {
     std::vector<std::string> subGroups;
 
     std::string line;
     bool        found = false;
 
-    std::ifstream cgroupStream(root + "/proc/self/cgroup");
+    std::ifstream cgroupStream(root / "proc/self/cgroup");
     while (!found && std::getline(cgroupStream, line))
     {
         std::istringstream       lineStream(line);
@@ -1111,11 +1115,11 @@ float parseCgroup2CpuLimit(const std::vector<std::string>& mountPoints, const st
         }
     }
 
-    const std::string cgroupPath = findCgroupPath(mountPoints, subGroups, root);
-    if (!cgroupPath.empty())
+    const std::optional<std::filesystem::path> cgroupPath = findCgroupPath(mountPoints, subGroups, root);
+    if (cgroupPath.has_value())
     {
         // Read two values from one file
-        std::ifstream cpuMaxStream(cgroupPath + "/cpu.max");
+        std::ifstream cpuMaxStream(cgroupPath.value() / "cpu.max");
         std::string   quotaString, periodString;
 
         if (std::getline(cpuMaxStream, quotaString, ' ') && std::getline(cpuMaxStream, periodString, ' '))
@@ -1151,18 +1155,17 @@ float parseCgroup2CpuLimit(const std::vector<std::string>& mountPoints, const st
  * This function will attempt to detect the actual allowed CPU limit
  * from Linux kernel filesystems.
  */
-float detectCpuLimit(const std::string& root = "")
+float detectCpuLimit(const std::filesystem::path& root = "/")
 {
     float cpuLimit = -1;
 
     std::string              line;
-    bool                     found = false;
     std::vector<std::string> cgroups1Mounts;
     std::vector<std::string> cgroups2Mounts;
 
     // if /etc/mtab isn't present, std::getline will return 0.
-    std::ifstream procMountsStream(root + "/proc/mounts");
-    while (!found && std::getline(procMountsStream, line))
+    std::ifstream procMountsStream(root / "proc/mounts");
+    while (std::getline(procMountsStream, line))
     {
         std::istringstream       lineStream(line);
         std::vector<std::string> columns{ std::istream_iterator<std::string>(lineStream),
@@ -1338,7 +1341,7 @@ HardwareTopology::HardwareTopology(int logicalProcessorCount, ArrayRef<const int
 }
 
 HardwareTopology::HardwareTopology(const std::map<int, std::array<int, 3>>& logicalProcessorIdMap,
-                                   const std::string&                       filesystemRoot) :
+                                   const std::filesystem::path&             filesystemRoot) :
     supportLevel_(SupportLevel::None), machine_(), isThisSystem_(false)
 {
     // Create mock topology from saved APIC/core id data and (optionally) saved cgroups files.
@@ -1378,8 +1381,8 @@ HardwareTopology::HardwareTopology(const std::map<int, std::array<int, 3>>& logi
     }
 }
 
-HardwareTopology::HardwareTopology(const std::string&      filesystemRoot,
-                                   const std::vector<int>& allowedProcessors) :
+HardwareTopology::HardwareTopology(const std::filesystem::path& filesystemRoot,
+                                   ArrayRef<const int>          allowedProcessors) :
     supportLevel_(SupportLevel::None), machine_(), isThisSystem_(false)
 {
     // Create mock topology by parsing saved sys/fs and (optionally) cgroups files
@@ -1396,9 +1399,9 @@ HardwareTopology::HardwareTopology(const std::string&      filesystemRoot,
     }
 }
 
-HardwareTopology::HardwareTopology(const std::string&      filesystemRoot,
-                                   const std::vector<int>& allowedProcessors,
-                                   const std::vector<int>& externalAffinitySet) :
+HardwareTopology::HardwareTopology(const std::filesystem::path& filesystemRoot,
+                                   ArrayRef<const int>          allowedProcessors,
+                                   ArrayRef<const int>          externalAffinitySet) :
     HardwareTopology(filesystemRoot, allowedProcessors)
 {
     for (auto& lp : machine_.logicalProcessors)
