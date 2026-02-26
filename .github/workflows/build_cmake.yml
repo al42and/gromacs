@@ -1,6 +1,6 @@
 name: CMake Build Matrix
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 env:
   CMAKE_VERSION: 3.28.0 # Oldest supported
