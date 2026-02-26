@@ -6,7 +6,7 @@ env:
   CMAKE_VERSION: 3.28.0 # Oldest supported
   NINJA_VERSION: 1.12.1 # Latest
   BUILD_TYPE: Release
-  CCACHE_VERSION: 4.10.2 # Latest
+  CCACHE_VERSION: 4.12.3 # Latest
   NINJA_STATUS: "[%f/%t %o/sec] "
 
 jobs:
