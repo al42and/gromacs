@@ -42,7 +42,7 @@
 #include <windows.h>
 #undef WIN32_LEAN_AND_MEAN
 
-#define tMPI_Atomic_memory_barrier()
+#define tMPI_Atomic_memory_barrier()  MemoryBarrier()
 
 
 typedef struct tMPI_Atomic
