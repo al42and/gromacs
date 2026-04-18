@@ -94,8 +94,8 @@ bool BondedDeviceTestRunner::supportsFlavor(BondedKernelFlavor flavor, const iLi
     {
         return false;
     }
-    const auto* begin = std::begin(fTypesOnGpu);
-    const auto* end   = std::end(fTypesOnGpu);
+    const auto begin = fTypesOnGpu.begin();
+    const auto end   = fTypesOnGpu.end();
     return std::find(begin, end, input.ftype.value()) != end;
 }
 
