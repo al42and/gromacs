@@ -117,6 +117,7 @@ static inline void tMPI_Spinlock_init(tMPI_Spinlock_t *x)
 
 static inline void tMPI_Spinlock_unlock(tMPI_Spinlock_t *x)
 {
+    tMPI_Atomic_memory_barrier();
     x->lock = 0;
 }
 
