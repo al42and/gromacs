@@ -75,6 +75,10 @@ if [[ -n "$GMX_TESTS_TO_RUN_REGEX" ]] ; then
     TESTS_REGEX="--tests-regex $GMX_TESTS_TO_RUN_REGEX"
 fi
 
+# Shufle tests inside each binary; GTEST_RANDOM_SEED should be in 1-99999 range
+export GTEST_SHUFFLE=1 GTEST_RANDOM_SEED="$(date +%s | cut -b6-)"
+echo "Shuffling tests with GTEST_RANDOM_SEED=${GTEST_RANDOM_SEED}"
+
 ctest -D $CTEST_RUN_MODE $LABEL_REGEX $TESTS_REGEX $EXTRA_FLAGS --parallel $PARALLEL_TEST_EXECUTION --schedule-random --output-on-failure | tee ctestLog.log || true
 
 EXITCODE=$?
