@@ -35,8 +35,10 @@ if ("$ENV{RUNNER_OS}" STREQUAL "Windows" AND NOT "x$ENV{ENVIRONMENT_SCRIPT}" STR
   set(environment_script "$ENV{ENVIRONMENT_SCRIPT}")
   if (NOT EXISTS "${environment_script}" AND "$ENV{RUNNER_ARCH}" STREQUAL "ARM64")
     file(GLOB vcvars_candidates
-      "C:/Program Files/Microsoft Visual Studio/2026/*/VC/Auxiliary/Build/vcvarsarm64.bat"
-      "C:/Program Files/Microsoft Visual Studio/2026/*/VC/Auxiliary/Build/vcvarsamd64_arm64.bat"
+      "C:/Program Files/Microsoft Visual Studio/*/*/VC/Auxiliary/Build/vcvarsarm64.bat"
+      "C:/Program Files/Microsoft Visual Studio/*/*/VC/Auxiliary/Build/vcvarsamd64_arm64.bat"
+      "C:/Program Files (x86)/Microsoft Visual Studio/*/*/VC/Auxiliary/Build/vcvarsarm64.bat"
+      "C:/Program Files (x86)/Microsoft Visual Studio/*/*/VC/Auxiliary/Build/vcvarsamd64_arm64.bat"
     )
     if (vcvars_candidates)
       list(GET vcvars_candidates 0 environment_script)
