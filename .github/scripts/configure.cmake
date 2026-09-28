@@ -32,8 +32,9 @@
 # the research papers on the package. Check out https://www.gromacs.org.
 
 if ("$ENV{RUNNER_OS}" STREQUAL "Windows" AND NOT "x$ENV{ENVIRONMENT_SCRIPT}" STREQUAL "x")
+  set(environment_script_command "call \"$ENV{ENVIRONMENT_SCRIPT}\" >nul && set")
   execute_process(
-    COMMAND "$ENV{ENVIRONMENT_SCRIPT}" && set
+    COMMAND cmd /C "${environment_script_command}"
     OUTPUT_FILE environment_script_output.txt
   )
   file(STRINGS environment_script_output.txt output_lines)
