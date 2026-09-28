@@ -29,7 +29,7 @@ jobs:
             name: "Windows ARM64 MSVC 2026", artifact: "Windows-ARM64-MSVC-2026.7z",
             os: windows-11-arm,
             cc: "cl", cxx: "cl",
-            environment_script: "C:/Program Files/Microsoft Visual Studio/2026/Enterprise/VC/Auxiliary/Build/vcvarsarm64.bat",
+            environment_script: "C:/Program Files/Microsoft Visual Studio/2026/Enterprise/VC/Auxiliary/Build/vcvarsamd64_arm64.bat",
             gpu_var: "Off",
             openmp_var: "On"
           }

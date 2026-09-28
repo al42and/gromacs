@@ -32,23 +32,8 @@
 # the research papers on the package. Check out https://www.gromacs.org.
 
 if ("$ENV{RUNNER_OS}" STREQUAL "Windows" AND NOT "x$ENV{ENVIRONMENT_SCRIPT}" STREQUAL "x")
-  set(environment_script "$ENV{ENVIRONMENT_SCRIPT}")
-  if (NOT EXISTS "${environment_script}" AND "$ENV{RUNNER_ARCH}" STREQUAL "ARM64")
-    file(GLOB vcvars_candidates
-      "C:/Program Files/Microsoft Visual Studio/*/*/VC/Auxiliary/Build/vcvarsarm64.bat"
-      "C:/Program Files/Microsoft Visual Studio/*/*/VC/Auxiliary/Build/vcvarsamd64_arm64.bat"
-      "C:/Program Files (x86)/Microsoft Visual Studio/*/*/VC/Auxiliary/Build/vcvarsarm64.bat"
-      "C:/Program Files (x86)/Microsoft Visual Studio/*/*/VC/Auxiliary/Build/vcvarsamd64_arm64.bat"
-    )
-    if (vcvars_candidates)
-      list(GET vcvars_candidates 0 environment_script)
-    endif()
-  endif()
-  if (NOT EXISTS "${environment_script}")
-    message(FATAL_ERROR "Visual Studio environment script not found: ${environment_script}")
-  endif()
   set(environment_dump_script "${CMAKE_CURRENT_BINARY_DIR}/environment_dump.bat")
-  file(WRITE "${environment_dump_script}" "@echo off\r\ncall \"${environment_script}\" >nul\r\nset\r\n")
+  file(WRITE "${environment_dump_script}" "@echo off\r\ncall \"%ENVIRONMENT_SCRIPT%\" >nul\r\nset\r\n")
   execute_process(
     COMMAND cmd /C "${environment_dump_script}"
     OUTPUT_FILE environment_script_output.txt
