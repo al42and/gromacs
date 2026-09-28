@@ -211,8 +211,8 @@ static __inline__ gmx_cycles_t gmx_cycles_read(void)
 static __inline gmx_cycles_t gmx_cycles_read(void)
 {
 #    if defined(_M_ARM) || defined(_M_ARM64)
-    /* Windows on ARM */
-    return __rdpmccntr64();
+    /* Windows on ARM: no supported cycle-counter intrinsic in this toolchain. */
+    return 0;
 #    else
     /* x86 */
 #        if GMX_USE_RDTSCP
@@ -467,7 +467,11 @@ static __inline bool gmx_cycles_have_counter(void)
 #elif (defined(_MSC_VER))
 static __inline bool gmx_cycles_have_counter(void)
 {
+#    if defined(_M_ARM) || defined(_M_ARM64)
+    return 0;
+#    else
     return 1;
+#    endif
 }
 #elif (defined(__hpux) || defined(__HP_cc)) && defined(__ia64)
 static inline bool gmx_cycles_have_counter(void)
