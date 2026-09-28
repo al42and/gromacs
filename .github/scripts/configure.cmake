@@ -33,15 +33,35 @@
 
 if ("$ENV{RUNNER_OS}" STREQUAL "Windows" AND NOT "x$ENV{ENVIRONMENT_SCRIPT}" STREQUAL "x")
   execute_process(
-    COMMAND "$ENV{ENVIRONMENT_SCRIPT}" && set
+    COMMAND
+      cmd.exe /d /c
+      "call \"${ENV{ENVIRONMENT_SCRIPT}}\" && set"
     OUTPUT_FILE environment_script_output.txt
+    RESULT_VARIABLE environment_result
   )
+
+  if (NOT environment_result EQUAL 0)
+    message(FATAL_ERROR
+      "Could not initialize Visual Studio environment: "
+      "${ENV{ENVIRONMENT_SCRIPT}}")
+  endif()
+
   file(STRINGS environment_script_output.txt output_lines)
   foreach(line IN LISTS output_lines)
     if (line MATCHES "^([a-zA-Z0-9_-]+)=(.*)$")
       set(ENV{${CMAKE_MATCH_1}} "${CMAKE_MATCH_2}")
     endif()
   endforeach()
+endif()
+
+if ("$ENV{RUNNER_OS}" STREQUAL "Windows")
+  execute_process(
+    COMMAND cmd.exe /d /c "where cl"
+    RESULT_VARIABLE compiler_result
+  )
+  if (NOT compiler_result EQUAL 0)
+    message(FATAL_ERROR "cl.exe is not available after loading the MSVC environment")
+  endif()
 endif()
 
 set(path_separator ":")
