@@ -32,11 +32,13 @@
 # the research papers on the package. Check out https://www.gromacs.org.
 
 if ("$ENV{RUNNER_OS}" STREQUAL "Windows" AND NOT "x$ENV{ENVIRONMENT_SCRIPT}" STREQUAL "x")
-  set(environment_script_command "call \"%ENVIRONMENT_SCRIPT%\" >nul && set")
+  set(environment_dump_script "${CMAKE_CURRENT_BINARY_DIR}/environment_dump.bat")
+  file(WRITE "${environment_dump_script}" "@echo off\r\ncall \"%ENVIRONMENT_SCRIPT%\" >nul\r\nset\r\n")
   execute_process(
-    COMMAND cmd /C "${environment_script_command}"
+    COMMAND cmd /C "${environment_dump_script}"
     OUTPUT_FILE environment_script_output.txt
   )
+  file(REMOVE "${environment_dump_script}")
   file(STRINGS environment_script_output.txt output_lines)
   foreach(line IN LISTS output_lines)
     if (line MATCHES "^([a-zA-Z0-9_-]+)=(.*)$")
