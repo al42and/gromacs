@@ -31,6 +31,15 @@
 # To help us fund GROMACS development, we humbly ask that you cite
 # the research papers on the package. Check out https://www.gromacs.org.
 
+# Shuffle tests inside each binary; GTEST_RANDOM_SEED should be in 1-99999 range
+set(ENV{GTEST_SHUFFLE} 1)
+if (NOT DEFINED ENV{GTEST_RANDOM_SEED} OR "$ENV{GTEST_RANDOM_SEED}" STREQUAL "")
+  string(TIMESTAMP current_time "%s")
+  string(SUBSTRING "${current_time}" 5 -1 random_seed)
+  set(ENV{GTEST_RANDOM_SEED} "${random_seed}")
+endif()
+message("Shuffling tests with GTEST_RANDOM_SEED=$ENV{GTEST_RANDOM_SEED}")
+
 execute_process(
   COMMAND ctest --output-on-failure
   WORKING_DIRECTORY build
